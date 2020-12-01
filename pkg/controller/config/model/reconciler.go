@@ -137,7 +137,7 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 
 	// Locate the onos-config service
 	services := &corev1.ServiceList{}
-	if err := r.client.List(context.TODO(), services, client.HasLabels{"app=onos", "type=config"}); err != nil {
+	if err := r.client.List(context.TODO(), services, client.MatchingLabels{"app": "onos", "type": "config"}); err != nil {
 		log.Error(err)
 		return reconcile.Result{}, err
 	} else if len(services.Items) == 0 {
