@@ -156,7 +156,7 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 
 	// Connect to the first matching service
 	service := services.Items[0]
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", service.Name, service.Spec.Ports[0].Port), grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	conn, err := grpc.Dial(fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Spec.Ports[0].Port), grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	if err != nil {
 		log.Error(err)
 		return reconcile.Result{}, err
