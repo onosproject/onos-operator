@@ -16,16 +16,17 @@ package model
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/onosproject/onos-config/api/admin"
+	"github.com/onosproject/onos-lib-go/pkg/certs"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -36,6 +37,8 @@ import (
 )
 
 var log = logging.GetLogger("controller", "config", "model")
+
+const chunkSize = 1024 * 4
 
 // Add creates a new Database controller and adds it to the Manager. The Manager will set fields on the
 // controller and Start it when the Manager is Started.
@@ -91,19 +94,19 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 	if model.Status.Phase == nil {
 		log.Infof("Preparing Model %s.%s for generation", request.Namespace, request.Name)
-		return r.setPhase(model, v1beta1.ModelPhaseGenerating)
+		return r.setPhase(model, v1beta1.ModelGenerating)
 	}
 
 	phase := *model.Status.Phase
 	switch phase {
-	case v1beta1.ModelPhaseGenerating:
+	case v1beta1.ModelGenerating:
 		return r.generateModel(model)
-	case v1beta1.ModelPhaseGenerated:
+	case v1beta1.ModelGenerated:
 		log.Infof("Preparing Model %s.%s for installation", request.Namespace, request.Name)
-		return r.setPhase(model, v1beta1.ModelPhaseInstalling)
-	case v1beta1.ModelPhaseInstalling:
+		return r.setPhase(model, v1beta1.ModelInstalling)
+	case v1beta1.ModelInstalling:
 		return r.installModel(model)
-	case v1beta1.ModelPhaseInstalled:
+	case v1beta1.ModelInstalled:
 	}
 	return reconcile.Result{}, nil
 }
@@ -111,47 +114,28 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 func (r *Reconciler) generateModel(model *v1beta1.Model) (reconcile.Result, error) {
 	log.Infof("Generating plugin for Model %s.%s", model.Namespace, model.Name)
 
-	bytes, err := generatePlugin(model)
+	// Generate and store the model plugin
+	err := generatePlugin(model)
 	if err != nil {
 		log.Error(err)
 		return reconcile.Result{}, nil
 	}
 
-	plugin := getPluginName(model)
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: model.Namespace,
-			Name:      model.Name,
-		},
-		BinaryData: map[string][]byte{
-			plugin: bytes,
-		},
-	}
-	if err := r.client.Create(context.TODO(), cm); err != nil {
-		log.Error(err)
-		return reconcile.Result{}, err
-	}
-
+	// Update the model phase to Generated
 	log.Infof("Plugin generation for Model %s.%s complete", model.Namespace, model.Name)
-	return r.setPhase(model, v1beta1.ModelPhaseGenerated)
+	return r.setPhase(model, v1beta1.ModelGenerated)
 }
 
 func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error) {
 	log.Infof("Installing plugin for Model %s.%s", model.Namespace, model.Name)
 
-	cm := &corev1.ConfigMap{}
-	name := types.NamespacedName{
-		Namespace: model.Namespace,
-		Name:      model.Name,
-	}
-	if err := r.client.Get(context.TODO(), name, cm); err != nil {
-		log.Error(err)
+	// Read the model plugin from the file system
+	bytes, err := readPlugin(model)
+	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	plugin := getPluginName(model)
-	bytes := cm.BinaryData[plugin]
-
+	// Locate the onos-config service
 	services := &corev1.ServiceList{}
 	if err := r.client.List(context.TODO(), services, client.HasLabels{"app=onos", "type=config"}); err != nil {
 		log.Error(err)
@@ -160,14 +144,25 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 		return reconcile.Result{}, nil
 	}
 
-	service := services.Items[0]
+	// Setup the connection credentials
+	cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", service.Name, service.Spec.Ports[0].Port), grpc.WithInsecure())
+	// Connect to the first matching service
+	service := services.Items[0]
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", service.Name, service.Spec.Ports[0].Port), grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	if err != nil {
 		log.Error(err)
 		return reconcile.Result{}, err
 	}
 
+	// Upload the model plugin to the onos-config service
 	client := admin.NewConfigAdminServiceClient(conn)
 	stream, err := client.UploadRegisterModel(context.TODO())
 	if err != nil {
@@ -175,13 +170,15 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 		return reconcile.Result{}, err
 	}
 
-	for i := 0; i < len(bytes); i += 1040 {
+	// Send plugin bytes in chunks
+	for i := 0; i < len(bytes); i += chunkSize {
 		var chunk []byte
-		if len(bytes) < i+1024 {
+		if len(bytes) < i+chunkSize {
 			chunk = bytes[i:]
 		} else {
-			chunk = bytes[i : i+1024]
+			chunk = bytes[i : i+chunkSize]
 		}
+
 		err := stream.Send(&admin.Chunk{
 			SoFile:  fmt.Sprintf("%s.so", model.Name),
 			Content: chunk,
@@ -192,14 +189,16 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 		}
 	}
 
+	// Close the connection to finish the upload
 	_, err = stream.CloseAndRecv()
 	if err != nil {
 		log.Error(err)
 		return reconcile.Result{}, err
 	}
 
+	// Update the model phase to Installed
 	log.Infof("Plugin installation for Model %s.%s complete", model.Namespace, model.Name)
-	return r.setPhase(model, v1beta1.ModelPhaseInstalled)
+	return r.setPhase(model, v1beta1.ModelInstalled)
 }
 
 func (r *Reconciler) setPhase(model *v1beta1.Model, phase v1beta1.ModelPhase) (reconcile.Result, error) {

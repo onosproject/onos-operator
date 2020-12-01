@@ -12,29 +12,28 @@ import (
 	_ "github.com/openconfig/ygot/ytypes"
 )
 
-var ModelPlugin = &modelPlugin{}
-
-type Modelplugin string
-
 const (
     modelType = {{ .Model.Type | quote }}
     modelVersion = {{ .Model.Version | quote }}
     moduleName = {{ .Module.Name | quote }}
 )
 
-var ModelData = []*gnmi.ModelData{
+var ModelPlugin modelPlugin
+
+type modelPlugin string
+
+var modelData = []*gnmi.ModelData{
     {{- range .Model.Data }}
 	{Name: {{ .Name | quote }}, Organization: {{ .Organization | quote }}, Version: {{ .Version | quote }}},
 	{Name: {{ .Name | quote }}, Organization: {{ .Organization | quote }}, Version: {{ .Version | quote }}},
 	{{- end }}
 }
 
-func (m Modelplugin) ModelData() (string, string, []*gnmi.ModelData, string) {
-	return modelType, modelVersion, ModelData, moduleName
+func (m modelPlugin) ModelData() (string, string, []*gnmi.ModelData, string) {
+	return modelType, modelVersion, modelData, moduleName
 }
 
-// UnmarshallConfigValues allows Device to implement the Unmarshaller interface
-func (m Modelplugin) UnmarshalConfigValues(jsonTree []byte) (*ygot.ValidatedGoStruct, error) {
+func (m modelPlugin) UnmarshalConfigValues(jsonTree []byte) (*ygot.ValidatedGoStruct, error) {
 	device := &Device{}
 	vgs := ygot.ValidatedGoStruct(device)
 
@@ -45,7 +44,7 @@ func (m Modelplugin) UnmarshalConfigValues(jsonTree []byte) (*ygot.ValidatedGoSt
 	return &vgs, nil
 }
 
-func (m Modelplugin) Validate(ygotModel *ygot.ValidatedGoStruct, opts ...ygot.ValidationOption) error {
+func (m modelPlugin) Validate(ygotModel *ygot.ValidatedGoStruct, opts ...ygot.ValidationOption) error {
 	deviceDeref := *ygotModel
 	device, ok := deviceDeref.(*Device)
 	if !ok {
@@ -54,12 +53,12 @@ func (m Modelplugin) Validate(ygotModel *ygot.ValidatedGoStruct, opts ...ygot.Va
 	return device.Validate()
 }
 
-func (m Modelplugin) Schema() (map[string]*yang.Entry, error) {
+func (m modelPlugin) Schema() (map[string]*yang.Entry, error) {
 	return UnzipSchema()
 }
 
 // GetStateMode returns an int - we do not use the enum because we do not want a
 // direct dependency on onos-config code (for build optimization)
-func (m Modelplugin) GetStateMode() int {
+func (m modelPlugin) GetStateMode() int {
 	return 0 // modelregistry.GetStateNone
 }

@@ -239,6 +239,7 @@ rules:
       - ""
     resources:
       - pods
+      - services
       - configmaps
     verbs:
       - '*'
@@ -339,10 +340,14 @@ spec:
             - name: config
               mountPath: /etc/onos/config
               readOnly: true
+            - name: plugins
+              mountPath: /etc/onos/plugins
       volumes:
         - name: config
           configMap:
             name: onos-operator-config
+        - name: plugins
+          emptyDir: {}
 ---
 apiVersion: apps/v1
 kind: Deployment

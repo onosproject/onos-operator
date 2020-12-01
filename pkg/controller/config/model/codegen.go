@@ -25,51 +25,56 @@ import (
 	"text/template"
 )
 
-func generatePlugin(model *v1beta1.Model) ([]byte, error) {
+const (
+	moduleTplPath  = "/etc/onos/codegen/module.tpl"
+	pluginTplPath  = "/etc/onos/codegen/modelplugin.tpl"
+	pluginRepoPath = "/etc/onos/plugins"
+)
+
+func generatePlugin(model *v1beta1.Model) error {
 	// Create the template arguments
 	args := getTemplateArgs(model)
 
-	// Create a temporary directory for the module
-	moduleDir, err := createTempModuleDir(model)
-	if err != nil {
-		return nil, err
+	// Get the module directory
+	if pluginExists(model) {
+		return nil
+	}
+
+	// Create a directory for the module
+	if err := createPluginDir(model); err != nil {
+		return err
 	}
 
 	// Generate the go.mod file
-	if err := applyTemplate("module", "/etc/onos/codegen/module.tpl", filepath.Join(moduleDir, "go.mod"), args); err != nil {
-		return nil, err
+	log.Debugf("Generating go.mod for Model %s.%s", model.Namespace, model.Name)
+	if err := applyTemplate("module.tpl", moduleTplPath, filepath.Join(getPluginDir(model), "go.mod"), args); err != nil {
+		return err
 	}
 
 	// Generate the main
-	if err := applyTemplate("plugin", "/etc/onos/codegen/modelplugin.tpl", filepath.Join(moduleDir, "main.go"), args); err != nil {
-		return nil, err
+	log.Debugf("Generating main.go for Model %s.%s", model.Namespace, model.Name)
+	if err := applyTemplate("modelplugin.tpl", pluginTplPath, filepath.Join(getPluginDir(model), "main.go"), args); err != nil {
+		return err
 	}
 
 	// Write the YANG models to the temporary directory
-	yangDir := filepath.Join(moduleDir, "yang")
-	if err := writeYangModels(model, yangDir); err != nil {
-		return nil, err
+	log.Debugf("Copying YANG models for Model %s.%s", model.Namespace, model.Name)
+	if err := writeYangModels(model); err != nil {
+		return err
 	}
 
 	// Generate the YANG bindings
-	if err := generateYangBindings(model, yangDir, moduleDir); err != nil {
-		return nil, err
+	log.Debugf("Generating YANG bindings for Model %s.%s", model.Namespace, model.Name)
+	if err := generateYangBindings(model); err != nil {
+		return err
 	}
 
 	// Compile the plugin
-	if err := compilePlugin(model, moduleDir); err != nil {
-		return nil, err
+	log.Debugf("Compiling plugin for Model %s.%s", model.Namespace, model.Name)
+	if err := compilePlugin(model); err != nil {
+		return err
 	}
-
-	// Read the compiled plugin
-	bytes, err := readPlugin(model, moduleDir)
-	if err != nil {
-		return nil, err
-	}
-
-	// Delete the temporary directory
-	os.RemoveAll(moduleDir)
-	return bytes, nil
+	return nil
 }
 
 func getModuleName(model *v1beta1.Model) string {
@@ -99,18 +104,6 @@ func getTemplateArgs(model *v1beta1.Model) TemplateArgs {
 	}
 }
 
-func createTempModuleDir(model *v1beta1.Model) (string, error) {
-	moduleDir, err := ioutil.TempDir("/tmp", fmt.Sprintf("%s-%s", model.Namespace, model.Name))
-	if err != nil {
-		return "", err
-	}
-
-	if _, err := os.Stat(moduleDir); os.IsNotExist(err) {
-		os.MkdirAll(moduleDir, os.ModeDir)
-	}
-	return moduleDir, nil
-}
-
 func applyTemplate(name, tplPath, outPath string, args TemplateArgs) error {
 	var funcs template.FuncMap = map[string]interface{}{
 		"quote": func(value string) string {
@@ -137,6 +130,10 @@ func applyTemplate(name, tplPath, outPath string, args TemplateArgs) error {
 	return tpl.Execute(file, args)
 }
 
+func getYangDir(model *v1beta1.Model) string {
+	return filepath.Join(getPluginDir(model), "yang")
+}
+
 func getYangFilePath(dir string, model v1beta1.YangModel) string {
 	return filepath.Join(dir, getYangFileName(model))
 }
@@ -145,7 +142,8 @@ func getYangFileName(model v1beta1.YangModel) string {
 	return fmt.Sprintf("%s@%s.yang", model.Name, strings.ReplaceAll(model.Version, ".", "_"))
 }
 
-func writeYangModels(model *v1beta1.Model, dir string) error {
+func writeYangModels(model *v1beta1.Model) error {
+	dir := getYangDir(model)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		os.MkdirAll(dir, os.ModeDir)
 	}
@@ -162,14 +160,16 @@ func writeYangModels(model *v1beta1.Model, dir string) error {
 	return nil
 }
 
-func generateYangBindings(model *v1beta1.Model, inPath, outPath string) error {
+func generateYangBindings(model *v1beta1.Model) error {
+	inPath := getYangDir(model)
+	outPath := getPluginDir(model)
 	generatedPath := filepath.Join(outPath, "generated.go")
 	args := []string{
 		"run",
 		"github.com/openconfig/ygot/generator",
 		"-path=" + inPath,
 		"-output_file=" + generatedPath,
-		"-package_name=" + getModuleName(model),
+		"-package_name=main",
 		"-generate_fakeroot",
 	}
 
@@ -179,6 +179,7 @@ func generateYangBindings(model *v1beta1.Model, inPath, outPath string) error {
 
 	cmd := exec.Command("go", args...)
 	cmd.Dir = outPath
+	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -188,21 +189,41 @@ func getPluginName(model *v1beta1.Model) string {
 	return fmt.Sprintf("%s.so.%s", model.Spec.Type, model.Spec.Version)
 }
 
-func getPluginPath(model *v1beta1.Model, dir string) string {
-	return filepath.Join(dir, getPluginName(model))
+func getPluginDir(model *v1beta1.Model) string {
+	return filepath.Join(pluginRepoPath, fmt.Sprintf("%s-%s", model.Namespace, model.Name))
 }
 
-func compilePlugin(model *v1beta1.Model, dir string) error {
-	cmd := exec.Command("go", "build", "-o", getPluginPath(model, dir), "-buildmode=plugin", "github.com/onosproject/config-models/modelplugin/"+getModuleName(model))
-	cmd.Dir = dir
-	cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
+func getPluginPath(model *v1beta1.Model) string {
+	return filepath.Join(getPluginDir(model), getPluginName(model))
+}
+
+func createPluginDir(model *v1beta1.Model) error {
+	moduleDir := getPluginDir(model)
+	if _, err := os.Stat(moduleDir); os.IsNotExist(err) {
+		os.MkdirAll(moduleDir, os.ModeDir)
+	}
+	return nil
+}
+
+func pluginExists(model *v1beta1.Model) bool {
+	pluginPath := getPluginPath(model)
+	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func compilePlugin(model *v1beta1.Model) error {
+	cmd := exec.Command("go", "build", "-o", getPluginPath(model), "-buildmode=plugin", "github.com/onosproject/config-models/modelplugin/"+getModuleName(model))
+	cmd.Dir = getPluginDir(model)
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
-func readPlugin(model *v1beta1.Model, dir string) ([]byte, error) {
-	return ioutil.ReadFile(getPluginPath(model, dir))
+func readPlugin(model *v1beta1.Model) ([]byte, error) {
+	return ioutil.ReadFile(getPluginPath(model))
 }
 
 type TemplateArgs struct {

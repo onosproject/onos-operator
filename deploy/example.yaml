@@ -6,16 +6,12 @@ spec:
   type: ric
   version: 1.0.0
   yangModels:
-    - name: xapp
-      version: 1.0.0
+    - name: test
+      version: 2020-11-18
       data: |
-        module xapp {
-          namespace "http://opennetworking.org/oran/xapp";
-          prefix xapp;
-
-          import ietf-inet-types {
-            prefix inet;
-          }
+        module test {
+          namespace "http://opennetworking.org/oran/test";
+          prefix t1;
 
           organization
             "Open Networking Foundation.";
@@ -23,53 +19,33 @@ spec:
             "Adib Rastegarnia";
           description
             "To generate JSON from this use command
-             pyang -f jtoxx xapp.yang | python3 -m json.tool > test1.json
+             pyang -f jtoxx test1.yang | python3 -m json.tool > test1.json
              Copied from YangUIComponents project";
 
-          revision 2020-11-24 {
+          revision 2020-11-18 {
             description
-              "Add e2 node configuration information and list of e2 nodes";
+              "Extended with new attributes on leaf2d, list2b";
             reference
-              "";
+              "RFC 6087";
           }
 
-          grouping e2node-info {
+          container cont1a {
             description
               "The top level container";
-            leaf ip {
-              type inet:ip-address;
+            leaf leaf1a {
+              type string {
+                length "1..80";
+              }
               description
-                "The IP address of the node";
+                "display name to use in GUI or CLI";
             }
-            leaf port {
-              type inet:port-number;
+            leaf leaf2a {
+              type string {
+                length "1..255";
+              }
               description
-                "The port of the node";
+                "user plane name";
             }
-            leaf plmn-id {
-              type string;
-              description
-                "PLMN id";
-            }
-            leaf id {
-              type string;
-              description
-                "eNB id";
-            }
-          }
-
-          container nodes {
-            config false;
-            list node {
-              key "id";
-              uses e2node-info;
-              description
-                "e2 node";
-
-            }
-
-            description
-              "The list of e2 nodes";
           }
         }
 ---

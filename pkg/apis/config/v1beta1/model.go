@@ -42,10 +42,10 @@ type ModelStatus struct {
 type ModelPhase string
 
 const (
-	ModelPhaseGenerating ModelPhase = "Generating"
-	ModelPhaseGenerated  ModelPhase = "Generated"
-	ModelPhaseInstalling ModelPhase = "Installing"
-	ModelPhaseInstalled  ModelPhase = "Installed"
+	ModelGenerating ModelPhase = "Generating"
+	ModelGenerated  ModelPhase = "Generated"
+	ModelInstalling ModelPhase = "Installing"
+	ModelInstalled  ModelPhase = "Installed"
 )
 
 // +genclient
