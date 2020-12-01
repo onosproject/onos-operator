@@ -36,12 +36,12 @@ func generatePlugin(model *v1beta1.Model) ([]byte, error) {
 	}
 
 	// Generate the go.mod file
-	if err := applyTemplate("module", "pkg/controller/config/model/module.tpl", filepath.Join(moduleDir, "go.mod"), args); err != nil {
+	if err := applyTemplate("module", "/etc/onos/codegen/module.tpl", filepath.Join(moduleDir, "go.mod"), args); err != nil {
 		return nil, err
 	}
 
 	// Generate the main
-	if err := applyTemplate("plugin", "pkg/controller/config/model/modelplugin.tpl", filepath.Join(moduleDir, "main.go"), args); err != nil {
+	if err := applyTemplate("plugin", "/etc/onos/codegen/modelplugin.tpl", filepath.Join(moduleDir, "main.go"), args); err != nil {
 		return nil, err
 	}
 

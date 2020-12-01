@@ -90,12 +90,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	}
 
 	if model.Status.Phase == nil {
-		phase := v1beta1.ModelPhaseGenerating
-		model.Status.Phase = &phase
-		if err := r.client.Status().Update(context.TODO(), model); err != nil {
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
+		log.Infof("Preparing Model %s.%s for generation", request.Namespace, request.Name)
+		return r.setPhase(model, v1beta1.ModelPhaseGenerating)
 	}
 
 	phase := *model.Status.Phase
@@ -103,12 +99,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	case v1beta1.ModelPhaseGenerating:
 		return r.generateModel(model)
 	case v1beta1.ModelPhaseGenerated:
-		phase := v1beta1.ModelPhaseInstalling
-		model.Status.Phase = &phase
-		if err := r.client.Status().Update(context.TODO(), model); err != nil {
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
+		log.Infof("Preparing Model %s.%s for installation", request.Namespace, request.Name)
+		return r.setPhase(model, v1beta1.ModelPhaseInstalling)
 	case v1beta1.ModelPhaseInstalling:
 		return r.installModel(model)
 	case v1beta1.ModelPhaseInstalled:
@@ -117,6 +109,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 }
 
 func (r *Reconciler) generateModel(model *v1beta1.Model) (reconcile.Result, error) {
+	log.Infof("Generating plugin for Model %s.%s", model.Namespace, model.Name)
+
 	bytes, err := generatePlugin(model)
 	if err != nil {
 		log.Error(err)
@@ -134,24 +128,24 @@ func (r *Reconciler) generateModel(model *v1beta1.Model) (reconcile.Result, erro
 		},
 	}
 	if err := r.client.Create(context.TODO(), cm); err != nil {
+		log.Error(err)
 		return reconcile.Result{}, err
 	}
 
-	phase := v1beta1.ModelPhaseGenerated
-	model.Status.Phase = &phase
-	if err := r.client.Status().Update(context.TODO(), model); err != nil {
-		return reconcile.Result{}, err
-	}
-	return reconcile.Result{}, nil
+	log.Infof("Plugin generation for Model %s.%s complete", model.Namespace, model.Name)
+	return r.setPhase(model, v1beta1.ModelPhaseGenerated)
 }
 
 func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error) {
+	log.Infof("Installing plugin for Model %s.%s", model.Namespace, model.Name)
+
 	cm := &corev1.ConfigMap{}
 	name := types.NamespacedName{
 		Namespace: model.Namespace,
 		Name:      model.Name,
 	}
 	if err := r.client.Get(context.TODO(), name, cm); err != nil {
+		log.Error(err)
 		return reconcile.Result{}, err
 	}
 
@@ -160,6 +154,7 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 
 	services := &corev1.ServiceList{}
 	if err := r.client.List(context.TODO(), services, client.HasLabels{"app=onos", "type=config"}); err != nil {
+		log.Error(err)
 		return reconcile.Result{}, err
 	} else if len(services.Items) == 0 {
 		return reconcile.Result{}, nil
@@ -169,12 +164,14 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", service.Name, service.Spec.Ports[0].Port), grpc.WithInsecure())
 	if err != nil {
+		log.Error(err)
 		return reconcile.Result{}, err
 	}
 
 	client := admin.NewConfigAdminServiceClient(conn)
 	stream, err := client.UploadRegisterModel(context.TODO())
 	if err != nil {
+		log.Error(err)
 		return reconcile.Result{}, err
 	}
 
@@ -190,16 +187,22 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 			Content: chunk,
 		})
 		if err != nil {
+			log.Error(err)
 			return reconcile.Result{}, err
 		}
 	}
 
 	_, err = stream.CloseAndRecv()
 	if err != nil {
+		log.Error(err)
 		return reconcile.Result{}, err
 	}
 
-	phase := v1beta1.ModelPhaseInstalled
+	log.Infof("Plugin installation for Model %s.%s complete", model.Namespace, model.Name)
+	return r.setPhase(model, v1beta1.ModelPhaseInstalled)
+}
+
+func (r *Reconciler) setPhase(model *v1beta1.Model, phase v1beta1.ModelPhase) (reconcile.Result, error) {
 	model.Status.Phase = &phase
 	if err := r.client.Status().Update(context.TODO(), model); err != nil {
 		return reconcile.Result{}, err
