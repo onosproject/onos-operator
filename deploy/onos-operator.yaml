@@ -266,22 +266,22 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: onos-operator
+  name: config-operator
   namespace: kube-system
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: onos-operator
+      name: config-operator
   template:
     metadata:
       labels:
-        name: onos-operator
+        name: config-operator
     spec:
-      serviceAccountName: onos-operator
+      serviceAccountName: config-operator
       containers:
         - name: controller
-          image: onosproject/onos-operator:v0.1.0
+          image: onosproject/config-operator:v0.1.0
           ports:
             - containerPort: 60000
               name: metrics
@@ -292,13 +292,62 @@ spec:
             exec:
               command:
                 - stat
-                - /tmp/onos-operator-ready
+                - /tmp/config-operator-ready
             initialDelaySeconds: 4
             periodSeconds: 10
             failureThreshold: 1
           env:
             - name: CONTROLLER_NAME
-              value: onos-operator
+              value: config-operator
+            - name: CONTROLLER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: topo-operator
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: topo-operator
+  template:
+    metadata:
+      labels:
+        name: topo-operator
+    spec:
+      serviceAccountName: topo-operator
+      containers:
+        - name: controller
+          image: onosproject/topo-operator:v0.1.0
+          ports:
+            - containerPort: 60000
+              name: metrics
+            - containerPort: 5679
+              name: control
+          imagePullPolicy: IfNotPresent
+          readinessProbe:
+            exec:
+              command:
+                - stat
+                - /tmp/topo-operator-ready
+            initialDelaySeconds: 4
+            periodSeconds: 10
+            failureThreshold: 1
+          env:
+            - name: CONTROLLER_NAME
+              value: topo-operator
             - name: CONTROLLER_NAMESPACE
               valueFrom:
                 fieldRef:

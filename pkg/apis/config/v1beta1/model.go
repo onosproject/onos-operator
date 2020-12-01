@@ -24,7 +24,19 @@ type ModelSpec struct {
 }
 
 // ModelStatus defines the observed state of Model
-type ModelStatus struct{}
+type ModelStatus struct {
+	Phase *ModelPhase `json:"phase,omitempty"`
+}
+
+// ModelPhase is the phase of a model
+type ModelPhase string
+
+const (
+	ModelPhaseGenerating ModelPhase = "Generating"
+	ModelPhaseGenerated  ModelPhase = "Generated"
+	ModelPhaseInstalling ModelPhase = "Installing"
+	ModelPhaseInstalled  ModelPhase = "Installed"
+)
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
