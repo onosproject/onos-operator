@@ -29,7 +29,7 @@ spec:
               required:
                 - type
                 - version
-                - modules
+                - yangModels
               properties:
                 type:
                   type: string

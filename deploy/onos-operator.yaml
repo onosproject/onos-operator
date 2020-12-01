@@ -29,7 +29,7 @@ spec:
               required:
                 - type
                 - version
-                - modules
+                - yangModels
               properties:
                 type:
                   type: string
@@ -299,21 +299,19 @@ spec:
       labels:
         name: config-operator
     spec:
-      serviceAccountName: config-operator
+      serviceAccountName: onos-operator
       containers:
         - name: controller
-          image: onosproject/config-operator:v0.1.0
+          image: onosproject/config-operator:latest
           ports:
             - containerPort: 60000
               name: metrics
-            - containerPort: 5679
-              name: control
           imagePullPolicy: IfNotPresent
           readinessProbe:
             exec:
               command:
                 - stat
-                - /tmp/config-operator-ready
+                - /tmp/onos-operator-ready
             initialDelaySeconds: 4
             periodSeconds: 10
             failureThreshold: 1
@@ -332,6 +330,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config
+              mountPath: /etc/onos/config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: onos-operator-config
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -348,21 +354,19 @@ spec:
       labels:
         name: topo-operator
     spec:
-      serviceAccountName: topo-operator
+      serviceAccountName: onos-operator
       containers:
         - name: controller
-          image: onosproject/topo-operator:v0.1.0
+          image: onosproject/topo-operator:latest
           ports:
             - containerPort: 60000
               name: metrics
-            - containerPort: 5679
-              name: control
           imagePullPolicy: IfNotPresent
           readinessProbe:
             exec:
               command:
                 - stat
-                - /tmp/topo-operator-ready
+                - /tmp/onos-operator-ready
             initialDelaySeconds: 4
             periodSeconds: 10
             failureThreshold: 1
@@ -381,3 +385,30 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config
+              mountPath: /etc/onos/config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: onos-operator-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: onos-operator-config
+  namespace: kube-system
+data:
+  logging.yaml: |-
+    logging:
+      loggers:
+        root:
+          level: debug
+          output:
+            stdout:
+              sink: stdout
+      sinks:
+        stdout:
+          type: stdout
+          stdout: {}

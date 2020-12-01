@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	configapi "github.com/onosproject/onos-operator/pkg/apis/config"
-	"github.com/onosproject/onos-operator/pkg/controller"
+	"github.com/onosproject/onos-operator/pkg/controller/config/model"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -48,7 +48,7 @@ func main() {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, "")
+		log.Error(err)
 		os.Exit(1)
 	}
 
@@ -58,7 +58,7 @@ func main() {
 	r := ready.NewFileReady()
 	err = r.Set()
 	if err != nil {
-		log.Error(err, "")
+		log.Error(err)
 		os.Exit(1)
 	}
 	defer func() {
@@ -68,7 +68,7 @@ func main() {
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{Namespace: namespace})
 	if err != nil {
-		log.Error(err, "")
+		log.Error(err)
 		os.Exit(1)
 	}
 	mgr.GetClient()
@@ -77,13 +77,13 @@ func main() {
 
 	// Setup Scheme for all resources
 	if err := configapi.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "")
+		log.Error(err)
 		os.Exit(1)
 	}
 
 	// Setup all Controllers
-	if err := controller.AddControllers(mgr); err != nil {
-		log.Error(err, "")
+	if err := model.Add(mgr); err != nil {
+		log.Error(err)
 		os.Exit(1)
 	}
 
