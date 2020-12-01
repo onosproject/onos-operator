@@ -46,31 +46,31 @@ func generatePlugin(model *v1beta1.Model) error {
 	}
 
 	// Generate the go.mod file
-	log.Debugf("Generating go.mod for Model %s.%s", model.Namespace, model.Name)
+	log.Debugf("Generating go.mod for Model %s/%s", model.Namespace, model.Name)
 	if err := applyTemplate("module.tpl", moduleTplPath, filepath.Join(getPluginDir(model), "go.mod"), args); err != nil {
 		return err
 	}
 
 	// Generate the main
-	log.Debugf("Generating main.go for Model %s.%s", model.Namespace, model.Name)
+	log.Debugf("Generating main.go for Model %s/%s", model.Namespace, model.Name)
 	if err := applyTemplate("modelplugin.tpl", pluginTplPath, filepath.Join(getPluginDir(model), "main.go"), args); err != nil {
 		return err
 	}
 
 	// Write the YANG models to the temporary directory
-	log.Debugf("Copying YANG models for Model %s.%s", model.Namespace, model.Name)
-	if err := writeYangModels(model); err != nil {
+	log.Debugf("Copying YANG models for Model %s/%s", model.Namespace, model.Name)
+	if err := copyYangModels(model); err != nil {
 		return err
 	}
 
-	// Generate the YANG bindings
-	log.Debugf("Generating YANG bindings for Model %s.%s", model.Namespace, model.Name)
+	// Generate YANG bindings
+	log.Debugf("Generating YANG bindings for Model %s/%s", model.Namespace, model.Name)
 	if err := generateYangBindings(model); err != nil {
 		return err
 	}
 
 	// Compile the plugin
-	log.Debugf("Compiling plugin for Model %s.%s", model.Namespace, model.Name)
+	log.Debugf("Compiling plugin for Model %s/%s", model.Namespace, model.Name)
 	if err := compilePlugin(model); err != nil {
 		return err
 	}
@@ -88,6 +88,7 @@ func getTemplateArgs(model *v1beta1.Model) TemplateArgs {
 			Name:         yangModel.Name,
 			Organization: yangModel.Organization,
 			Version:      yangModel.Version,
+			File:         getYangFileName(yangModel),
 		}
 	}
 	moduleName := getModuleName(model)
@@ -142,7 +143,7 @@ func getYangFileName(model v1beta1.YangModel) string {
 	return fmt.Sprintf("%s@%s.yang", model.Name, strings.ReplaceAll(model.Version, ".", "_"))
 }
 
-func writeYangModels(model *v1beta1.Model) error {
+func copyYangModels(model *v1beta1.Model) error {
 	dir := getYangDir(model)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		os.MkdirAll(dir, os.ModeDir)
@@ -161,14 +162,11 @@ func writeYangModels(model *v1beta1.Model) error {
 }
 
 func generateYangBindings(model *v1beta1.Model) error {
-	inPath := getYangDir(model)
-	outPath := getPluginDir(model)
-	generatedPath := filepath.Join(outPath, "generated.go")
 	args := []string{
 		"run",
 		"github.com/openconfig/ygot/generator",
-		"-path=" + inPath,
-		"-output_file=" + generatedPath,
+		"-path=yang",
+		"-output_file=generated.go",
 		"-package_name=main",
 		"-generate_fakeroot",
 	}
@@ -178,7 +176,7 @@ func generateYangBindings(model *v1beta1.Model) error {
 	}
 
 	cmd := exec.Command("go", args...)
-	cmd.Dir = outPath
+	cmd.Dir = getPluginDir(model)
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -242,6 +240,7 @@ type ModelData struct {
 	Name         string
 	Organization string
 	Version      string
+	File         string
 }
 
 type ModuleArgs struct {

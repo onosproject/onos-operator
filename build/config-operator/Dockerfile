@@ -1,4 +1,4 @@
-FROM onosproject/golang-build:v0.6.6
+FROM onosproject/golang-build:v0.6.3
 
 ADD pkg/controller/config/model/modelplugin.tpl /etc/onos/codegen/modelplugin.tpl
 ADD pkg/controller/config/model/module.tpl /etc/onos/codegen/module.tpl

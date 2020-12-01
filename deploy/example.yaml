@@ -1,7 +1,7 @@
 apiVersion: config.onosproject.org/v1beta1
 kind: Model
 metadata:
-  name: xapp
+  name: ric
 spec:
   type: ric
   version: 1.0.0

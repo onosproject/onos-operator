@@ -76,7 +76,7 @@ type Reconciler struct {
 // Reconcile reads that state of the cluster for a Model object and makes changes based on the state read
 // and what is in the Model.Spec
 func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Infof("Reconciling Model %s.%s", request.Namespace, request.Name)
+	log.Infof("Reconciling Model %s/%s", request.Namespace, request.Name)
 
 	// Fetch the Model instance
 	model := &v1beta1.Model{}
@@ -93,7 +93,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	}
 
 	if model.Status.Phase == nil {
-		log.Infof("Preparing Model %s.%s for generation", request.Namespace, request.Name)
+		log.Infof("Preparing Model %s/%s for generation", request.Namespace, request.Name)
 		return r.setPhase(model, v1beta1.ModelGenerating)
 	}
 
@@ -102,7 +102,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	case v1beta1.ModelGenerating:
 		return r.generateModel(model)
 	case v1beta1.ModelGenerated:
-		log.Infof("Preparing Model %s.%s for installation", request.Namespace, request.Name)
+		log.Infof("Preparing Model %s/%s for installation", request.Namespace, request.Name)
 		return r.setPhase(model, v1beta1.ModelInstalling)
 	case v1beta1.ModelInstalling:
 		return r.installModel(model)
@@ -112,7 +112,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 }
 
 func (r *Reconciler) generateModel(model *v1beta1.Model) (reconcile.Result, error) {
-	log.Infof("Generating plugin for Model %s.%s", model.Namespace, model.Name)
+	log.Infof("Generating plugin for Model %s/%s", model.Namespace, model.Name)
 
 	// Generate and store the model plugin
 	err := generatePlugin(model)
@@ -122,12 +122,12 @@ func (r *Reconciler) generateModel(model *v1beta1.Model) (reconcile.Result, erro
 	}
 
 	// Update the model phase to Generated
-	log.Infof("Plugin generation for Model %s.%s complete", model.Namespace, model.Name)
+	log.Infof("Plugin generation for Model %s/%s complete", model.Namespace, model.Name)
 	return r.setPhase(model, v1beta1.ModelGenerated)
 }
 
 func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error) {
-	log.Infof("Installing plugin for Model %s.%s", model.Namespace, model.Name)
+	log.Infof("Installing plugin for Model %s/%s", model.Namespace, model.Name)
 
 	// Read the model plugin from the file system
 	bytes, err := readPlugin(model)
@@ -197,7 +197,7 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 	}
 
 	// Update the model phase to Installed
-	log.Infof("Plugin installation for Model %s.%s complete", model.Namespace, model.Name)
+	log.Infof("Plugin installation for Model %s/%s complete", model.Namespace, model.Name)
 	return r.setPhase(model, v1beta1.ModelInstalled)
 }
 
