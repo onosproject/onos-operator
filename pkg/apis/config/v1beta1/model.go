@@ -20,7 +20,17 @@ import (
 
 // ModelSpec is the k8s spec for a Model resource
 type ModelSpec struct {
-	Modules map[string]string `json:"modules,omitempty"`
+	Type       string      `json:"type,omitempty"`
+	Version    string      `json:"version,omitempty"`
+	YangModels []YangModel `json:"yangModels,omitempty"`
+}
+
+// YangModel defines a Yang model
+type YangModel struct {
+	Name         string `json:"name,omitempty"`
+	Organization string `json:"organization,omitempty"`
+	Version      string `json:"version,omitempty"`
+	Data         string `json:"data,omitempty"`
 }
 
 // ModelStatus defines the observed state of Model
