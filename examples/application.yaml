@@ -1,0 +1,14 @@
+apiVersion: core.onosproject.org/v1beta1
+kind: Application
+metadata:
+  name: my-xapp
+spec:
+  replicas: 3
+  image: onosproject/my-xapp:latest
+  model:
+    name: ric
+  config:
+    logging:
+      loggers:
+        root:
+          level: debug

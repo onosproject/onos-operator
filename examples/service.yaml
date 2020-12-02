@@ -1,0 +1,40 @@
+# The entity kind used by the service to track xApp nodes.
+apiVersion: topo.onosproject.org/v1beta1
+kind: Kind
+metadata:
+  name: xapp-node
+spec:
+  attributes:
+    foo: bar
+---
+# The topology service creates and manages topology entities for the xApp Deployment
+# The label selector is used to identify the pods belonging to the service.
+apiVersion: topo.onosproject.org/v1beta1
+kind: Service
+metadata:
+  name: my-xapp
+spec:
+  selector:
+    matchLabels:
+      name: my-xapp
+  kind:
+    name: xapp-node
+---
+# This Deployment defines an xApp labeled such that its pods will be added to the topology.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-xapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: my-xapp
+  template:
+    metadata:
+      labels:
+        name: my-xapp
+    spec:
+      containers:
+        - name: my-xapp
+          image: onosproject/my-xapp:latest

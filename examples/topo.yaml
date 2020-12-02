@@ -1,0 +1,85 @@
+# A topology kind representing an E2 node
+apiVersion: topo.onosproject.org/v1beta1
+kind: Kind
+metadata:
+  name: e2-node
+spec:
+  attributes:
+    foo: bar
+---
+# A topology kind representing an E2 termination point
+apiVersion: topo.onosproject.org/v1beta1
+kind: Kind
+metadata:
+  name: e2-termination
+spec:
+  attributes:
+    foo: bar
+---
+# A topology kind representing an E2 connection
+apiVersion: topo.onosproject.org/v1beta1
+kind: Kind
+metadata:
+  name: e2-connection
+spec:
+  attributes:
+    bar: baz
+---
+# An entity representing an E2 termination point
+apiVersion: topo.onosproject.org/v1beta1
+kind: Entity
+metadata:
+  name: e2t-1
+spec:
+  kind:
+    name: e2-termiation
+  attributes:
+    baz: foo
+---
+# An entity representing an E2 termination point
+apiVersion: topo.onosproject.org/v1beta1
+kind: Entity
+metadata:
+  name: e2t-2
+spec:
+  kind:
+    name: e2-termiation
+  attributes:
+    baz: foo
+---
+# An entity representing an E2 node
+apiVersion: topo.onosproject.org/v1beta1
+kind: Entity
+metadata:
+  name: e2-node-1
+spec:
+  kind:
+    name: e2-node
+  attributes:
+    baz: foo
+---
+# A relation representing a connection between an E2 node and an E2 termination point
+apiVersion: topo.onosproject.org/v1beta1
+kind: Relation
+metadata:
+  name: e2-node-1-e2t-1
+spec:
+  kind:
+    name: e2-connection
+  source:
+    name: e2-node-1
+  target:
+    name: e2t-1
+---
+# A relation representing a connection between an E2 node and an E2 termination point
+apiVersion: topo.onosproject.org/v1beta1
+kind: Relation
+metadata:
+  name: e2-node-1-e2t-2
+spec:
+  kind:
+    name: e2-connection
+  source:
+    name: e2-node-1
+  target:
+    name: e2t-2

@@ -1,3 +1,4 @@
+# A sample configuration Model for configuring a RIC component.
 apiVersion: config.onosproject.org/v1beta1
 kind: Model
 metadata:
@@ -48,16 +49,3 @@ spec:
             }
           }
         }
----
-apiVersion: topo.onosproject.org/v1beta1
-kind: Service
-metadata:
-  name: my-xapp
-spec:
-  selector:
-    name: my-xapp
-  model:
-    name: xapp
-  config:
-    foo: bar
-    bar: baz
