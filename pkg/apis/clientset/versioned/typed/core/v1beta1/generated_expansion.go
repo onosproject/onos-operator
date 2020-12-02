@@ -18,8 +18,4 @@ limitations under the License.
 
 package v1beta1
 
-type EntityExpansion interface{}
-
-type KindExpansion interface{}
-
-type RelationExpansion interface{}
+type MicroserviceExpansion interface{}

@@ -61,15 +61,15 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: services.topo.onosproject.org
+  name: microservices.core.onosproject.org
 spec:
-  group: topo.onosproject.org
+  group: core.onosproject.org
   scope: Namespaced
   names:
-    kind: Service
-    listKind: ServiceList
-    plural: services
-    singular: service
+    kind: Microservice
+    listKind: MicroserviceList
+    plural: microservices
+    singular: microservice
   versions:
     - name: v1beta1
       served: true
@@ -96,6 +96,10 @@ spec:
                       type: string
                 config:
                   type: object
+                  additionalProperties:
+                    type: string
+            status:
+              type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -135,6 +139,10 @@ spec:
                       type: string
                 attributes:
                   type: object
+                  additionalProperties:
+                    type: string
+            status:
+              type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -194,6 +202,10 @@ spec:
                       type: string
                 attributes:
                   type: object
+                  additionalProperties:
+                    type: string
+            status:
+              type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -222,6 +234,10 @@ spec:
               properties:
                 attributes:
                   type: object
+                  additionalProperties:
+                    type: string
+            status:
+              type: object
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -289,6 +305,61 @@ spec:
   ports:
     - name: control
       port: 5679
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-operator
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: core-operator
+  template:
+    metadata:
+      labels:
+        name: core-operator
+    spec:
+      serviceAccountName: onos-operator
+      containers:
+        - name: controller
+          image: onosproject/core-operator:latest
+          ports:
+            - containerPort: 60000
+              name: metrics
+          imagePullPolicy: IfNotPresent
+          readinessProbe:
+            exec:
+              command:
+                - stat
+                - /tmp/onos-operator-ready
+            initialDelaySeconds: 4
+            periodSeconds: 10
+            failureThreshold: 1
+          env:
+            - name: CONTROLLER_NAME
+              value: core-operator
+            - name: CONTROLLER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config
+              mountPath: /etc/onos/config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: onos-operator-config
 ---
 apiVersion: apps/v1
 kind: Deployment

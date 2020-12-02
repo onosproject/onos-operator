@@ -40,10 +40,6 @@ func (c *FakeTopoV1beta1) Relations(namespace string) v1beta1.RelationInterface 
 	return &FakeRelations{c, namespace}
 }
 
-func (c *FakeTopoV1beta1) Services(namespace string) v1beta1.ServiceInterface {
-	return &FakeServices{c, namespace}
-}
-
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeTopoV1beta1) RESTClient() rest.Interface {

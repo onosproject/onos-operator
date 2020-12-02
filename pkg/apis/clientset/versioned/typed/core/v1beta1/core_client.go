@@ -20,36 +20,26 @@ package v1beta1
 
 import (
 	"github.com/onosproject/onos-operator/pkg/apis/clientset/versioned/scheme"
-	v1beta1 "github.com/onosproject/onos-operator/pkg/apis/topo/v1beta1"
+	v1beta1 "github.com/onosproject/onos-operator/pkg/apis/core/v1beta1"
 	rest "k8s.io/client-go/rest"
 )
 
-type TopoV1beta1Interface interface {
+type CoreV1beta1Interface interface {
 	RESTClient() rest.Interface
-	EntitiesGetter
-	KindsGetter
-	RelationsGetter
+	MicroservicesGetter
 }
 
-// TopoV1beta1Client is used to interact with features provided by the topo.onosproject.org group.
-type TopoV1beta1Client struct {
+// CoreV1beta1Client is used to interact with features provided by the core.onosproject.org group.
+type CoreV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *TopoV1beta1Client) Entities(namespace string) EntityInterface {
-	return newEntities(c, namespace)
+func (c *CoreV1beta1Client) Microservices(namespace string) MicroserviceInterface {
+	return newMicroservices(c, namespace)
 }
 
-func (c *TopoV1beta1Client) Kinds(namespace string) KindInterface {
-	return newKinds(c, namespace)
-}
-
-func (c *TopoV1beta1Client) Relations(namespace string) RelationInterface {
-	return newRelations(c, namespace)
-}
-
-// NewForConfig creates a new TopoV1beta1Client for the given config.
-func NewForConfig(c *rest.Config) (*TopoV1beta1Client, error) {
+// NewForConfig creates a new CoreV1beta1Client for the given config.
+func NewForConfig(c *rest.Config) (*CoreV1beta1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -58,12 +48,12 @@ func NewForConfig(c *rest.Config) (*TopoV1beta1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &TopoV1beta1Client{client}, nil
+	return &CoreV1beta1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new TopoV1beta1Client for the given config and
+// NewForConfigOrDie creates a new CoreV1beta1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *TopoV1beta1Client {
+func NewForConfigOrDie(c *rest.Config) *CoreV1beta1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -71,9 +61,9 @@ func NewForConfigOrDie(c *rest.Config) *TopoV1beta1Client {
 	return client
 }
 
-// New creates a new TopoV1beta1Client for the given RESTClient.
-func New(c rest.Interface) *TopoV1beta1Client {
-	return &TopoV1beta1Client{c}
+// New creates a new CoreV1beta1Client for the given RESTClient.
+func New(c rest.Interface) *CoreV1beta1Client {
+	return &CoreV1beta1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -91,7 +81,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *TopoV1beta1Client) RESTClient() rest.Interface {
+func (c *CoreV1beta1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

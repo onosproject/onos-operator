@@ -18,10 +18,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
-	topoapi "github.com/onosproject/onos-operator/pkg/apis/topo"
-	"github.com/onosproject/onos-operator/pkg/controller/topo/entity"
-	"github.com/onosproject/onos-operator/pkg/controller/topo/kind"
-	"github.com/onosproject/onos-operator/pkg/controller/topo/relation"
+	coreapi "github.com/onosproject/onos-operator/pkg/apis/core"
+	"github.com/onosproject/onos-operator/pkg/controller/core/microservice"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -32,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
-var log = logging.GetLogger("topo-operator")
+var log = logging.GetLogger("core-operator")
 
 func printVersion() {
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
@@ -78,21 +76,13 @@ func main() {
 	log.Info("Registering components")
 
 	// Setup Scheme for all resources
-	if err := topoapi.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := coreapi.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
 
 	// Setup all Controllers
-	if err := entity.Add(mgr); err != nil {
-		log.Error(err)
-		os.Exit(1)
-	}
-	if err := kind.Add(mgr); err != nil {
-		log.Error(err)
-		os.Exit(1)
-	}
-	if err := relation.Add(mgr); err != nil {
+	if err := microservice.Add(mgr); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
