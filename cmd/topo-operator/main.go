@@ -22,6 +22,7 @@ import (
 	"github.com/onosproject/onos-operator/pkg/controller/topo/entity"
 	"github.com/onosproject/onos-operator/pkg/controller/topo/kind"
 	"github.com/onosproject/onos-operator/pkg/controller/topo/relation"
+	"github.com/onosproject/onos-operator/pkg/controller/topo/service"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -93,6 +94,10 @@ func main() {
 		os.Exit(1)
 	}
 	if err := relation.Add(mgr); err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+	if err := service.Add(mgr); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}

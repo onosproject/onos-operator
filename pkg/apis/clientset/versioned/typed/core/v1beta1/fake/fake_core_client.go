@@ -28,8 +28,8 @@ type FakeCoreV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCoreV1beta1) Microservices(namespace string) v1beta1.MicroserviceInterface {
-	return &FakeMicroservices{c, namespace}
+func (c *FakeCoreV1beta1) Applications(namespace string) v1beta1.ApplicationInterface {
+	return &FakeApplications{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

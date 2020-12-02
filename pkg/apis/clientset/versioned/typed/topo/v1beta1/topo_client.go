@@ -29,6 +29,7 @@ type TopoV1beta1Interface interface {
 	EntitiesGetter
 	KindsGetter
 	RelationsGetter
+	ServicesGetter
 }
 
 // TopoV1beta1Client is used to interact with features provided by the topo.onosproject.org group.
@@ -46,6 +47,10 @@ func (c *TopoV1beta1Client) Kinds(namespace string) KindInterface {
 
 func (c *TopoV1beta1Client) Relations(namespace string) RelationInterface {
 	return newRelations(c, namespace)
+}
+
+func (c *TopoV1beta1Client) Services(namespace string) ServiceInterface {
+	return newServices(c, namespace)
 }
 
 // NewForConfig creates a new TopoV1beta1Client for the given config.

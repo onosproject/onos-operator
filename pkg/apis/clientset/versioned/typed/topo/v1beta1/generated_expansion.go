@@ -23,3 +23,5 @@ type EntityExpansion interface{}
 type KindExpansion interface{}
 
 type RelationExpansion interface{}
+
+type ServiceExpansion interface{}

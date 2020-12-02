@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	coreapi "github.com/onosproject/onos-operator/pkg/apis/core"
-	"github.com/onosproject/onos-operator/pkg/controller/core/microservice"
+	"github.com/onosproject/onos-operator/pkg/controller/core/application"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -82,7 +82,7 @@ func main() {
 	}
 
 	// Setup all Controllers
-	if err := microservice.Add(mgr); err != nil {
+	if err := application.Add(mgr); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}

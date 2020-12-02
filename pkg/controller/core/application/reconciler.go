@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package microservice
+package application
 
 import (
 	"context"
@@ -31,9 +31,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logging.GetLogger("controller", "core", "microservice")
+var log = logging.GetLogger("controller", "core", "application")
 
-// Add creates a new Microservice controller and adds it to the Manager. The Manager will set fields on the
+// Add creates a new Application controller and adds it to the Manager. The Manager will set fields on the
 // controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	r := &Reconciler{
@@ -43,29 +43,29 @@ func Add(mgr manager.Manager) error {
 	}
 
 	// Create a new controller
-	c, err := controller.New("core-microservice-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("core-application-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource Microservice
-	err = c.Watch(&source.Kind{Type: &v1beta1.Microservice{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource Application
+	err = c.Watch(&source.Kind{Type: &v1beta1.Application{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resource Deployment and requeue the owner Microservice
+	// Watch for changes to secondary resource Deployment and requeue the owner Application
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &v1beta1.Microservice{},
+		OwnerType:    &v1beta1.Application{},
 	})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resource Pod and requeue the owner Microservice
+	// Watch for changes to secondary resource Pod and requeue the owner Application
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		OwnerType: &v1beta1.Microservice{},
+		OwnerType: &v1beta1.Application{},
 	})
 	if err != nil {
 		return err
@@ -76,21 +76,21 @@ func Add(mgr manager.Manager) error {
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-// Reconciler reconciles a Microservice object
+// Reconciler reconciles a Application object
 type Reconciler struct {
 	client client.Client
 	scheme *runtime.Scheme
 	config *rest.Config
 }
 
-// Reconcile reads that state of the cluster for a Microservice object and makes changes based on the state read
-// and what is in the Microservice.Spec
+// Reconcile reads that state of the cluster for a Application object and makes changes based on the state read
+// and what is in the Application.Spec
 func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.Infof("Reconciling Service %s.%s", request.Namespace, request.Name)
 
-	// Fetch the Microservice instance
-	microservice := &v1beta1.Microservice{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, microservice)
+	// Fetch the Application instance
+	application := &v1beta1.Application{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, application)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

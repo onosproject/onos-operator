@@ -26,7 +26,7 @@ import (
 
 type CoreV1beta1Interface interface {
 	RESTClient() rest.Interface
-	MicroservicesGetter
+	ApplicationsGetter
 }
 
 // CoreV1beta1Client is used to interact with features provided by the core.onosproject.org group.
@@ -34,8 +34,8 @@ type CoreV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *CoreV1beta1Client) Microservices(namespace string) MicroserviceInterface {
-	return newMicroservices(c, namespace)
+func (c *CoreV1beta1Client) Applications(namespace string) ApplicationInterface {
+	return newApplications(c, namespace)
 }
 
 // NewForConfig creates a new CoreV1beta1Client for the given config.
