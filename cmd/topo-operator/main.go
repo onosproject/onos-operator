@@ -19,12 +19,15 @@ import (
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	topoapi "github.com/onosproject/onos-operator/pkg/apis/topo"
+	"github.com/onosproject/onos-operator/pkg/apis/topo/v1beta1"
+	topoctrl "github.com/onosproject/onos-operator/pkg/controller/topo"
 	"github.com/onosproject/onos-operator/pkg/controller/topo/entity"
 	"github.com/onosproject/onos-operator/pkg/controller/topo/kind"
 	"github.com/onosproject/onos-operator/pkg/controller/topo/relation"
 	"github.com/onosproject/onos-operator/pkg/controller/topo/service"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"os"
 	"runtime"
@@ -84,6 +87,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Add controllers to the manager
+	if err := topoctrl.AddControllers(mgr); err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+
 	// Setup all Controllers
 	if err := entity.Add(mgr); err != nil {
 		log.Error(err)
@@ -98,6 +107,14 @@ func main() {
 		os.Exit(1)
 	}
 	if err := service.Add(mgr); err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(&v1beta1.Entity{}, "spec.kind.name", func(rawObj k8sruntime.Object) []string {
+		entity := rawObj.(*v1beta1.Entity)
+		return []string{entity.Spec.Kind.Name}
+	}); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}

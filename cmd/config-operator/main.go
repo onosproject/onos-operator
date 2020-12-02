@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	configapi "github.com/onosproject/onos-operator/pkg/apis/config"
-	"github.com/onosproject/onos-operator/pkg/controller/config/model"
+	configctrl "github.com/onosproject/onos-operator/pkg/controller/config"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -82,7 +82,7 @@ func main() {
 	}
 
 	// Setup all Controllers
-	if err := model.Add(mgr); err != nil {
+	if err := configctrl.AddControllers(mgr); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
