@@ -16,15 +16,11 @@ package model
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"github.com/onosproject/onos-config/api/admin"
-	"github.com/onosproject/onos-lib-go/pkg/certs"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -38,6 +34,7 @@ import (
 
 var log = logging.GetLogger("controller", "config", "model")
 
+const configService = "onos-config"
 const chunkSize = 1024 * 4
 
 // Add creates a new Database controller and adds it to the Manager. The Manager will set fields on the
@@ -135,30 +132,9 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 		return reconcile.Result{}, err
 	}
 
-	// Locate the onos-config service
-	services := &corev1.ServiceList{}
-	if err := r.client.List(context.TODO(), services, client.InNamespace(model.Namespace), client.MatchingLabels{"app": "onos-config"}); err != nil {
-		log.Error(err)
-		return reconcile.Result{}, err
-	} else if len(services.Items) == 0 {
-		return reconcile.Result{}, nil
-	}
-
-	// Setup the connection credentials
-	cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
+	// Connect to the onos-config service
+	conn, err := grpc.ConnectService(r.client, model.Namespace, configService)
 	if err != nil {
-		return reconcile.Result{}, err
-	}
-	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: true,
-	}
-
-	// Connect to the first matching service
-	service := services.Items[0]
-	conn, err := grpc.Dial(fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Spec.Ports[0].Port), grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-	if err != nil {
-		log.Error(err)
 		return reconcile.Result{}, err
 	}
 
