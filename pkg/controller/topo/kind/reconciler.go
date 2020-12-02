@@ -16,9 +16,13 @@ package kind
 
 import (
 	"context"
+	"github.com/onosproject/onos-api/go/onos/topo"
+	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/topo/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
+	"google.golang.org/grpc/status"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,6 +34,9 @@ import (
 )
 
 var log = logging.GetLogger("controller", "topo", "kind")
+
+const topoService = "onos-topo"
+const topoFinalizer = "topo"
 
 // Add creates a new Kind controller and adds it to the Manager. The Manager will set fields on the
 // controller and Start it when the Manager is Started.
@@ -83,13 +90,13 @@ type Reconciler struct {
 // Reconcile reads that state of the cluster for a Kind object and makes changes based on the state read
 // and what is in the Kind.Spec
 func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Infof("Reconciling Kind %s.%s", request.Namespace, request.Name)
+	log.Infof("Reconciling Kind %s/%s", request.Namespace, request.Name)
 
 	// Fetch the Kind instance
-	Kind := &v1beta1.Kind{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, Kind)
+	kind := &v1beta1.Kind{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, kind)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -98,5 +105,169 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	if kind.DeletionTimestamp == nil {
+		return r.reconcileCreate(kind)
+	} else {
+		return r.reconcileDelete(kind)
+	}
+}
+
+func (r *Reconciler) reconcileCreate(kind *v1beta1.Kind) (reconcile.Result, error) {
+	// Add the finalizer to the kind if necessary
+	if !hasFinalizer(kind) {
+		addFinalizer(kind)
+		err := r.client.Update(context.TODO(), kind)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	// Connect to the topology service
+	conn, err := grpc.ConnectService(r.client, kind.Namespace, topoService)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	defer conn.Close()
+
+	client := topo.NewTopoClient(conn)
+
+	// Check if the kind exists in the topology and exit reconciliation if so
+	if exists, err := r.kindExists(kind, client); err != nil {
+		return reconcile.Result{}, err
+	} else if exists {
+		return reconcile.Result{}, nil
+	}
+
+	// If the kind does not exist, create it
+	if err := r.createKind(kind, client); err != nil {
+		return reconcile.Result{}, err
+	}
 	return reconcile.Result{}, nil
+}
+
+func (r *Reconciler) reconcileDelete(kind *v1beta1.Kind) (reconcile.Result, error) {
+	// If the kind has already been finalized, exit reconciliation
+	if !hasFinalizer(kind) {
+		return reconcile.Result{}, nil
+	}
+
+	// Connect to the topology service
+	conn, err := grpc.ConnectService(r.client, kind.Namespace, topoService)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	defer conn.Close()
+
+	client := topo.NewTopoClient(conn)
+
+	// Delete the kind from the topology
+	if err := r.deleteKind(kind, client); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Once the kind has been deleted, remove the topology finalizer
+	removeFinalizer(kind)
+	if err := r.client.Update(context.TODO(), kind); err != nil {
+		return reconcile.Result{}, err
+	}
+	return reconcile.Result{}, nil
+}
+
+func (r *Reconciler) kindExists(kind *v1beta1.Kind, client topo.TopoClient) (bool, error) {
+	request := &topo.GetRequest{
+		ID: topo.ID(kind.Name),
+	}
+	_, err := client.Get(context.TODO(), request)
+	if err == nil {
+		return true, nil
+	}
+
+	stat, ok := status.FromError(err)
+	if !ok {
+		return false, err
+	}
+
+	err = errors.FromStatus(stat)
+	if !errors.IsNotFound(err) {
+		return false, err
+	}
+	return false, nil
+}
+
+func (r *Reconciler) createKind(kind *v1beta1.Kind, client topo.TopoClient) error {
+	request := &topo.CreateRequest{
+		Object: &topo.Object{
+			ID:   topo.ID(kind.Name),
+			Type: topo.Object_KIND,
+			Obj: &topo.Object_Kind{
+				Kind: &topo.Kind{
+					Name:       kind.Name,
+					Attributes: kind.Spec.Attributes,
+				},
+			},
+			Attributes: kind.Spec.Attributes,
+		},
+	}
+
+	_, err := client.Create(context.TODO(), request)
+	if err == nil {
+		return nil
+	}
+
+	stat, ok := status.FromError(err)
+	if !ok {
+		return err
+	}
+
+	err = errors.FromStatus(stat)
+	if !errors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) deleteKind(kind *v1beta1.Kind, client topo.TopoClient) error {
+	request := &topo.DeleteRequest{
+		ID: topo.ID(kind.Name),
+	}
+
+	_, err := client.Delete(context.TODO(), request)
+	if err == nil {
+		return nil
+	}
+
+	stat, ok := status.FromError(err)
+	if !ok {
+		return err
+	}
+
+	err = errors.FromStatus(stat)
+	if !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
+func hasFinalizer(kind *v1beta1.Kind) bool {
+	for _, finalizer := range kind.Finalizers {
+		if finalizer == topoFinalizer {
+			return true
+		}
+	}
+	return false
+}
+
+func addFinalizer(kind *v1beta1.Kind) {
+	kind.Finalizers = append(kind.Finalizers, topoFinalizer)
+}
+
+func removeFinalizer(kind *v1beta1.Kind) {
+	finalizers := make([]string, 0, len(kind.Finalizers)-1)
+	for _, finalizer := range kind.Finalizers {
+		if finalizer != topoFinalizer {
+			finalizers = append(finalizers, finalizer)
+		}
+	}
+	kind.Finalizers = finalizers
 }

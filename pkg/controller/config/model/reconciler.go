@@ -17,7 +17,7 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/onosproject/onos-config/api/admin"
+	"github.com/onosproject/onos-api/go/onos/config/admin"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
@@ -137,6 +137,7 @@ func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	defer conn.Close()
 
 	// Upload the model plugin to the onos-config service
 	client := admin.NewConfigAdminServiceClient(conn)
