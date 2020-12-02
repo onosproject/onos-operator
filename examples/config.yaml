@@ -6,7 +6,7 @@ metadata:
 spec:
   type: ric
   version: 1.0.0
-  yangModels:
+  modules:
     - name: test
       version: 2020-11-18
       data: |

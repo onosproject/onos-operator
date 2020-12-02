@@ -82,8 +82,8 @@ func getModuleName(model *v1beta1.Model) string {
 }
 
 func getTemplateArgs(model *v1beta1.Model) TemplateArgs {
-	data := make([]ModelData, len(model.Spec.YangModels))
-	for i, yangModel := range model.Spec.YangModels {
+	data := make([]ModelData, len(model.Spec.Modules))
+	for i, yangModel := range model.Spec.Modules {
 		data[i] = ModelData{
 			Name:         yangModel.Name,
 			Organization: yangModel.Organization,
@@ -135,11 +135,11 @@ func getYangDir(model *v1beta1.Model) string {
 	return filepath.Join(getPluginDir(model), "yang")
 }
 
-func getYangFilePath(dir string, model v1beta1.YangModel) string {
+func getYangFilePath(dir string, model v1beta1.Module) string {
 	return filepath.Join(dir, getYangFileName(model))
 }
 
-func getYangFileName(model v1beta1.YangModel) string {
+func getYangFileName(model v1beta1.Module) string {
 	return fmt.Sprintf("%s@%s.yang", model.Name, strings.ReplaceAll(model.Version, ".", "_"))
 }
 
@@ -149,7 +149,7 @@ func copyYangModels(model *v1beta1.Model) error {
 		os.MkdirAll(dir, os.ModeDir)
 	}
 
-	for _, yangModel := range model.Spec.YangModels {
+	for _, yangModel := range model.Spec.Modules {
 		yangPath := getYangFilePath(dir, yangModel)
 		if _, err := os.Stat(yangPath); os.IsNotExist(err) {
 			err := ioutil.WriteFile(yangPath, []byte(yangModel.Data), os.ModePerm)
@@ -171,7 +171,7 @@ func generateYangBindings(model *v1beta1.Model) error {
 		"-generate_fakeroot",
 	}
 
-	for _, yangModel := range model.Spec.YangModels {
+	for _, yangModel := range model.Spec.Modules {
 		args = append(args, getYangFileName(yangModel))
 	}
 

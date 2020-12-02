@@ -27,13 +27,13 @@ spec:
               required:
                 - type
                 - version
-                - yangModels
+                - modules
               properties:
                 type:
                   type: string
                 version:
                   type: string
-                yangModels:
+                modules:
                   type: array
                   items:
                     type: object
