@@ -15,10 +15,10 @@
 package core
 
 import (
-	topov1beta1 "github.com/onosproject/onos-operator/pkg/apis/topo/v1beta1"
+	"github.com/onosproject/onos-operator/pkg/apis/core/v1beta1"
 )
 
 func init() {
 	// register the types with the Scheme so the components can map objects to GroupVersionKinds and back
-	AddToSchemes = append(AddToSchemes, topov1beta1.SchemeBuilder.AddToScheme)
+	AddToSchemes = append(AddToSchemes, v1beta1.SchemeBuilder.AddToScheme)
 }

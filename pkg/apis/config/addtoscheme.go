@@ -15,10 +15,10 @@
 package config
 
 import (
-	configv1beta1 "github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
+	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 )
 
 func init() {
 	// register the types with the Scheme so the components can map objects to GroupVersionKinds and back
-	AddToSchemes = append(AddToSchemes, configv1beta1.SchemeBuilder.AddToScheme)
+	AddToSchemes = append(AddToSchemes, v1beta1.SchemeBuilder.AddToScheme)
 }
