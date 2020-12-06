@@ -14,18 +14,12 @@ import (
 )
 
 const (
-	// InjectAnnotation is an annotation indicating whether to inject into a pod
-	InjectAnnotation = "config.onosproject.org/inject"
-	// ModelAnnotation is an annotation indicating the model name
-	ModelAnnotation = "config.onosproject.org/model"
+	// InjectModelAnnotation is an annotation indicating the model to inject a model into a pod
+	InjectModelAnnotation = "config.onosproject.org/inject-model"
 	// CompilerLanguageAnnotation is an annotation indicating which compiler language to use to compile a model
 	CompilerLanguageAnnotation = "config.onosproject.org/compiler-language"
 	// CompilerVersionAnnotation is an annotation indicating which compiler version to use to compile a model
 	CompilerVersionAnnotation = "config.onosproject.org/compiler-version"
-)
-
-const (
-	InjectModel = "model"
 )
 
 const (
@@ -55,17 +49,13 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	// If the pod is annotated with the InjectAnnotation, inject the module compiler
-	modelInject, ok := pod.Annotations[InjectAnnotation]
-	if !ok || modelInject != InjectModel {
-		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", InjectAnnotation))
-	}
-	modelName, ok := pod.Annotations[ModelAnnotation]
+	// If the pod is annotated with the InjectModelAnnotation, inject the module compiler
+	modelInject, ok := pod.Annotations[InjectModelAnnotation]
 	if !ok {
-		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", ModelAnnotation))
+		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", InjectModelAnnotation))
 	}
 
-	// If the pod is annotated with InjectAnnotation, ensure CompilerLanguageAnnotation
+	// If the pod is annotated with InjectModelAnnotation, ensure CompilerLanguageAnnotation
 	// and CompilerVersionAnnotation are present as well
 	compilerLanguage, ok := pod.Annotations[CompilerLanguageAnnotation]
 	if !ok {
@@ -82,11 +72,11 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 
 	// Load the annotated model
 	model := &configv1beta1.Model{}
-	modelNamespacedName := types.NamespacedName{
-		Name:      modelName,
+	modelName := types.NamespacedName{
+		Name:      modelInject,
 		Namespace: pod.Namespace,
 	}
-	if err := i.client.Get(ctx, modelNamespacedName, model); err != nil {
+	if err := i.client.Get(ctx, modelName, model); err != nil {
 		if errors.IsNotFound(err) {
 			return admission.Denied(fmt.Sprintf("Model '%s' not found", modelName))
 		}
@@ -95,13 +85,13 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 
 	// Load the associated ConfigMap
 	cm := &corev1.ConfigMap{}
-	cmNamespacedName := types.NamespacedName{
-		Name:      modelName,
+	cmName := types.NamespacedName{
+		Name:      modelInject,
 		Namespace: pod.Namespace,
 	}
-	if err := i.client.Get(ctx, cmNamespacedName, cm); err != nil {
+	if err := i.client.Get(ctx, cmName, cm); err != nil {
 		if errors.IsNotFound(err) {
-			return admission.Denied(fmt.Sprintf("ConfigMap '%s' not found", cmNamespacedName))
+			return admission.Denied(fmt.Sprintf("ConfigMap '%s' not found", cmName))
 		}
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
@@ -137,7 +127,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 
 	// Add the compiler init container
 	container := corev1.Container{
-		Name:  fmt.Sprintf("%s-compiler", modelName),
+		Name:  fmt.Sprintf("%s-compiler", modelInject),
 		Image: fmt.Sprintf("onosproject/config-model-compiler:%s-%s", compilerLanguage, compilerVersion),
 		Args: []string{
 			"--name",
