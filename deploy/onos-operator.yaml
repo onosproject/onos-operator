@@ -285,6 +285,46 @@ spec:
             status:
               type: object
 ---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: config-operator
+webhooks:
+  - name: compiler.config.onosproject.org
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+    clientConfig:
+      service:
+        namespace: kube-system
+        name: config-operator
+        path: /compiler
+      caBundle: Cg==
+  - name: registry.config.onosproject.org
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+    clientConfig:
+      service:
+        namespace: kube-system
+        name: config-operator
+        path: /registry
+      caBundle: Cg==
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -429,6 +469,8 @@ spec:
           ports:
             - containerPort: 60000
               name: metrics
+            - containerPort: 9443
+              name: webhook
           imagePullPolicy: IfNotPresent
           readinessProbe:
             exec:
@@ -465,6 +507,21 @@ spec:
             name: onos-operator-config
         - name: plugins
           emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-operator
+  namespace: kube-system
+  labels:
+    name: config-operator
+spec:
+  selector:
+    name: config-operator
+  ports:
+    - name: webhook
+      port: 443
+      targetPort: 9443
 ---
 apiVersion: apps/v1
 kind: Deployment
