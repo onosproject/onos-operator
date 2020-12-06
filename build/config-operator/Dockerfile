@@ -1,7 +1,8 @@
-FROM onosproject/golang-build:v0.6.3
+FROM alpine:3.8
 
-ADD pkg/controller/config/model/modelplugin.tpl /etc/onos/codegen/modelplugin.tpl
-ADD pkg/controller/config/model/module.tpl /etc/onos/codegen/module.tpl
+RUN apk upgrade --update --no-cache
+
+USER nobody
 
 ADD build/config-operator/_output/bin/config-operator /usr/local/bin/config-operator
 
