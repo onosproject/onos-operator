@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/onosproject/onos-operator/pkg/apis/clientset/versioned"
-	topov1beta1 "github.com/onosproject/onos-operator/pkg/apis/clientset/versioned/typed/topo/v1beta1"
-	faketopov1beta1 "github.com/onosproject/onos-operator/pkg/apis/clientset/versioned/typed/topo/v1beta1/fake"
+	configv1beta1 "github.com/onosproject/onos-operator/pkg/apis/clientset/versioned/typed/config/v1beta1"
+	fakeconfigv1beta1 "github.com/onosproject/onos-operator/pkg/apis/clientset/versioned/typed/config/v1beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -76,7 +76,7 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// TopoV1beta1 retrieves the TopoV1beta1Client
-func (c *Clientset) TopoV1beta1() topov1beta1.TopoV1beta1Interface {
-	return &faketopov1beta1.FakeTopoV1beta1{Fake: &c.Fake}
+// ConfigV1beta1 retrieves the ConfigV1beta1Client
+func (c *Clientset) ConfigV1beta1() configv1beta1.ConfigV1beta1Interface {
+	return &fakeconfigv1beta1.FakeConfigV1beta1{Fake: &c.Fake}
 }

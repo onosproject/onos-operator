@@ -100,18 +100,6 @@ func (c *FakeModels) Update(model *v1beta1.Model) (result *v1beta1.Model, err er
 	return obj.(*v1beta1.Model), err
 }
 
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeModels) UpdateStatus(model *v1beta1.Model) (*v1beta1.Model, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(modelsResource, "status", c.ns, model), &v1beta1.Model{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1beta1.Model), err
-}
-
 // Delete takes name of the model and deletes it. Returns an error if one occurs.
 func (c *FakeModels) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.

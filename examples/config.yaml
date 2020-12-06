@@ -4,7 +4,6 @@ kind: Model
 metadata:
   name: ric
 spec:
-  type: ric
   version: 1.0.0
   modules:
     - name: test
@@ -49,3 +48,26 @@ spec:
             }
           }
         }
+---
+# This Deployment defines Deployment annotated for config model injection
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-xapp
+  annotations:
+    model.config.onosproject.org/inject: ric
+    compiler.config.onosproject.org/language: go
+    compiler.config.onosproject.org/version: latest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: my-xapp
+  template:
+    metadata:
+      labels:
+        name: my-xapp
+    spec:
+      containers:
+        - name: my-xapp
+          image: onosproject/my-xapp:latest

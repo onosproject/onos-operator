@@ -33,21 +33,6 @@ type Module struct {
 	Data         string `json:"data,omitempty"`
 }
 
-// ModelStatus defines the observed state of Model
-type ModelStatus struct {
-	Phase *ModelPhase `json:"phase,omitempty"`
-}
-
-// ModelPhase is the phase of a model
-type ModelPhase string
-
-const (
-	ModelGenerating ModelPhase = "Generating"
-	ModelGenerated  ModelPhase = "Generated"
-	ModelInstalling ModelPhase = "Installing"
-	ModelInstalled  ModelPhase = "Installed"
-)
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -56,8 +41,7 @@ const (
 type Model struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ModelSpec   `json:"spec,omitempty"`
-	Status            ModelStatus `json:"status,omitempty"`
+	Spec              ModelSpec `json:"spec,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

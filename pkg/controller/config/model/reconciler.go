@@ -17,12 +17,13 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/onosproject/onos-api/go/onos/config/admin"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
-	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -33,9 +34,6 @@ import (
 )
 
 var log = logging.GetLogger("controller", "config", "model")
-
-const configService = "onos-config"
-const chunkSize = 1024 * 4
 
 // Add creates a new Database controller and adds it to the Manager. The Manager will set fields on the
 // controller and Start it when the Manager is Started.
@@ -89,99 +87,33 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, err
 	}
 
-	if model.Status.Phase == nil {
-		log.Infof("Preparing Model %s/%s for generation", request.Namespace, request.Name)
-		return r.setPhase(model, v1beta1.ModelGenerating)
+	// Create a ConfigMap to store the modules
+	cm := &corev1.ConfigMap{}
+	cmName := types.NamespacedName{
+		Name:      model.Name,
+		Namespace: model.Namespace,
 	}
-
-	phase := *model.Status.Phase
-	switch phase {
-	case v1beta1.ModelGenerating:
-		return r.generateModel(model)
-	case v1beta1.ModelGenerated:
-		log.Infof("Preparing Model %s/%s for installation", request.Namespace, request.Name)
-		return r.setPhase(model, v1beta1.ModelInstalling)
-	case v1beta1.ModelInstalling:
-		return r.installModel(model)
-	case v1beta1.ModelInstalled:
-	}
-	return reconcile.Result{}, nil
-}
-
-func (r *Reconciler) generateModel(model *v1beta1.Model) (reconcile.Result, error) {
-	log.Infof("Generating plugin for Model %s/%s", model.Namespace, model.Name)
-
-	// Generate and store the model plugin
-	err := generatePlugin(model)
-	if err != nil {
-		log.Error(err)
-		return reconcile.Result{}, nil
-	}
-
-	// Update the model phase to Generated
-	log.Infof("Plugin generation for Model %s/%s complete", model.Namespace, model.Name)
-	return r.setPhase(model, v1beta1.ModelGenerated)
-}
-
-func (r *Reconciler) installModel(model *v1beta1.Model) (reconcile.Result, error) {
-	log.Infof("Installing plugin for Model %s/%s", model.Namespace, model.Name)
-
-	// Read the model plugin from the file system
-	bytes, err := readPlugin(model)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Connect to the onos-config service
-	conn, err := grpc.ConnectService(r.client, model.Namespace, configService)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	defer conn.Close()
-
-	// Upload the model plugin to the onos-config service
-	client := admin.NewConfigAdminServiceClient(conn)
-	stream, err := client.UploadRegisterModel(context.TODO())
-	if err != nil {
-		log.Error(err)
-		return reconcile.Result{}, err
-	}
-
-	// Send plugin bytes in chunks
-	for i := 0; i < len(bytes); i += chunkSize {
-		var chunk []byte
-		if len(bytes) < i+chunkSize {
-			chunk = bytes[i:]
-		} else {
-			chunk = bytes[i : i+chunkSize]
-		}
-
-		err := stream.Send(&admin.Chunk{
-			SoFile:  fmt.Sprintf("%s.so", model.Name),
-			Content: chunk,
-		})
-		if err != nil {
-			log.Error(err)
+	if err := r.client.Get(context.Background(), cmName, cm); err != nil {
+		if !errors.IsNotFound(err) {
 			return reconcile.Result{}, err
 		}
-	}
 
-	// Close the connection to finish the upload
-	_, err = stream.CloseAndRecv()
-	if err != nil {
-		log.Error(err)
-		return reconcile.Result{}, err
-	}
+		data := make(map[string]string)
+		for _, module := range model.Spec.Modules {
+			name := fmt.Sprintf("%s@%s", module.Name, module.Version)
+			data[name] = module.Data
+		}
 
-	// Update the model phase to Installed
-	log.Infof("Plugin installation for Model %s/%s complete", model.Namespace, model.Name)
-	return r.setPhase(model, v1beta1.ModelInstalled)
-}
-
-func (r *Reconciler) setPhase(model *v1beta1.Model, phase v1beta1.ModelPhase) (reconcile.Result, error) {
-	model.Status.Phase = &phase
-	if err := r.client.Status().Update(context.TODO(), model); err != nil {
-		return reconcile.Result{}, err
+		cm = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      model.Name,
+				Namespace: model.Namespace,
+			},
+			Data: data,
+		}
+		if err := r.client.Create(context.Background(), cm); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 	return reconcile.Result{}, nil
 }

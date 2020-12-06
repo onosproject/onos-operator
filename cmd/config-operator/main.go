@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
+	configadmission "github.com/onosproject/onos-operator/pkg/admission/config"
 	configapi "github.com/onosproject/onos-operator/pkg/apis/config"
 	configctrl "github.com/onosproject/onos-operator/pkg/controller/config"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
@@ -85,6 +86,11 @@ func main() {
 	if err := configctrl.AddControllers(mgr); err != nil {
 		log.Error(err)
 		os.Exit(1)
+	}
+
+	// Setup all webhooks
+	if err := configadmission.RegisterWebhooks(mgr); err != nil {
+
 	}
 
 	log.Info("Starting the operator")
