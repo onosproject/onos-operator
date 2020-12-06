@@ -23,8 +23,22 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	corev1 "k8s.io/api/core/v1"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// ConnectAddress connects to a gRPC endpoint
+func ConnectAddress(c client.Client, address string) (*grpc.ClientConn, error) {
+	cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
+	if err != nil {
+		return nil, err
+	}
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}
+	return grpc.Dial(address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+}
 
 // ConnectService connects to a gRPC service by name
 func ConnectService(c client.Client, namespace, name string) (*grpc.ClientConn, error) {
@@ -50,16 +64,9 @@ func ConnectService(c client.Client, namespace, name string) (*grpc.ClientConn, 
 		return nil, errors.New("service not found")
 	}
 
-	// Setup the connection credentials
-	cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
-	if err != nil {
-		return nil, err
+	clusterDomain := os.Getenv("CLUSTER_DOMAIN")
+	if clusterDomain == "" {
+		clusterDomain = "cluster.local"
 	}
-	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: true,
-	}
-
-	// Connect to the first matching service
-	return grpc.Dial(fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Spec.Ports[0].Port), grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	return ConnectAddress(c, fmt.Sprintf("%s.%s.svc.%s:%d", service.Name, service.Namespace, clusterDomain, service.Spec.Ports[0].Port))
 }

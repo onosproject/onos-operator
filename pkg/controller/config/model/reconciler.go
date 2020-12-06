@@ -17,8 +17,11 @@ package model
 import (
 	"context"
 	"fmt"
+	"github.com/onosproject/onos-config-model-go/api/onos/configmodel"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
+	configadmission "github.com/onosproject/onos-operator/pkg/admission/config"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
+	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -34,6 +38,8 @@ import (
 )
 
 var log = logging.GetLogger("controller", "config", "model")
+
+const configFinalizer = "config"
 
 // Add creates a new Database controller and adds it to the Manager. The Manager will set fields on the
 // controller and Start it when the Manager is Started.
@@ -52,6 +58,14 @@ func Add(mgr manager.Manager) error {
 
 	// Watch for changes to primary resource Model
 	err = c.Watch(&source.Kind{Type: &v1beta1.Model{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource Pod
+	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: &modelMapper{mgr.GetClient()},
+	})
 	if err != nil {
 		return err
 	}
@@ -87,6 +101,23 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, err
 	}
 
+	if model.DeletionTimestamp == nil {
+		return r.reconcileCreate(model)
+	} else {
+		return r.reconcileDelete(model)
+	}
+}
+
+func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, error) {
+	// Add the finalizer to the model if necessary
+	if !hasFinalizer(model) {
+		addFinalizer(model)
+		err := r.client.Update(context.TODO(), model)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
 	// Create a ConfigMap to store the modules
 	cm := &corev1.ConfigMap{}
 	cmName := types.NamespacedName{
@@ -111,9 +142,207 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 			},
 			Data: data,
 		}
+		if err := controllerutil.SetOwnerReference(model, cm, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
 		if err := r.client.Create(context.Background(), cm); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
+
+	// Find all pods into which the model can be injected
+	pods := &corev1.PodList{}
+	podOpts := &client.ListOptions{
+		Namespace: model.Namespace,
+	}
+	if err := r.client.List(context.TODO(), pods, podOpts); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Install the model to each registry
+	for _, pod := range pods.Items {
+		if pod.Annotations[configadmission.InjectRegistryAnnotation] == "true" {
+			var status *v1beta1.RegistryStatus
+			for _, reg := range model.Status.RegistryStatuses {
+				if reg.PodName == pod.Name {
+					status = &reg
+					break
+				}
+			}
+
+			if status == nil {
+				status = &v1beta1.RegistryStatus{
+					PodName: pod.Name,
+					Phase:   v1beta1.ModelPending,
+				}
+				model.Status.RegistryStatuses = append(model.Status.RegistryStatuses, *status)
+				if err := r.client.Status().Update(context.TODO(), model); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			}
+
+			switch status.Phase {
+			case v1beta1.ModelPending:
+				if pod.Status.PodIP != "" {
+					status.Phase = v1beta1.ModelInstalling
+					if err := r.client.Status().Update(context.TODO(), model); err != nil {
+						return reconcile.Result{}, err
+					}
+					return reconcile.Result{}, nil
+				}
+			case v1beta1.ModelInstalling:
+				conn, err := grpc.ConnectAddress(r.client, pod.Status.PodIP)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				defer conn.Close()
+				client := configmodel.NewConfigModelRegistryServiceClient(conn)
+				var modules []*configmodel.ConfigModule
+				for _, module := range model.Spec.Modules {
+					modules = append(modules, &configmodel.ConfigModule{
+						Name:         module.Name,
+						Organization: module.Organization,
+						Version:      module.Version,
+						Data:         []byte(module.Data),
+					})
+				}
+				request := &configmodel.PushModelRequest{
+					Model: &configmodel.ConfigModel{
+						Name:    model.Spec.Type,
+						Version: model.Spec.Version,
+						Modules: modules,
+					},
+				}
+				if _, err := client.PushModel(context.TODO(), request); err != nil {
+					return reconcile.Result{}, err
+				}
+				status.Phase = v1beta1.ModelInstalled
+				if err := r.client.Status().Update(context.TODO(), model); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			case v1beta1.ModelInstalled:
+			}
+		}
+	}
+
+	// Update the status for deleted pods
+	for i, status := range model.Status.RegistryStatuses {
+		pod := &corev1.Pod{}
+		podName := types.NamespacedName{
+			Namespace: model.Namespace,
+			Name:      status.PodName,
+		}
+		if err := r.client.Get(context.TODO(), podName, pod); err != nil && !errors.IsNotFound(err) {
+			statuses := make([]v1beta1.RegistryStatus, 0, len(model.Status.RegistryStatuses)-1)
+			for j, status := range model.Status.RegistryStatuses {
+				if i != j {
+					statuses = append(statuses, status)
+				}
+			}
+			model.Status.RegistryStatuses = statuses
+			if err := r.client.Status().Update(context.TODO(), model); err != nil {
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, nil
+		}
+	}
 	return reconcile.Result{}, nil
+}
+
+func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, error) {
+	// If the model has already been finalized, exit reconciliation
+	if !hasFinalizer(model) {
+		return reconcile.Result{}, nil
+	}
+
+	// Find all pods into which the model can be injected
+	pods := &corev1.PodList{}
+	podOpts := &client.ListOptions{
+		Namespace: model.Namespace,
+	}
+	if err := r.client.List(context.TODO(), pods, podOpts); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Install the model to each registry
+	for _, pod := range pods.Items {
+		if pod.Annotations[configadmission.InjectRegistryAnnotation] == "true" {
+			conn, err := grpc.ConnectAddress(r.client, pod.Status.PodIP)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			defer conn.Close()
+			client := configmodel.NewConfigModelRegistryServiceClient(conn)
+			request := &configmodel.DeleteModelRequest{
+				Name:    model.Spec.Type,
+				Version: model.Spec.Version,
+			}
+			if _, err := client.DeleteModel(context.TODO(), request); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	}
+
+	// Once the model has been deleted, remove the topology finalizer
+	removeFinalizer(model)
+	if err := r.client.Update(context.TODO(), model); err != nil {
+		return reconcile.Result{}, err
+	}
+	return reconcile.Result{}, nil
+}
+
+func hasFinalizer(model *v1beta1.Model) bool {
+	for _, finalizer := range model.Finalizers {
+		if finalizer == configFinalizer {
+			return true
+		}
+	}
+	return false
+}
+
+func addFinalizer(model *v1beta1.Model) {
+	model.Finalizers = append(model.Finalizers, configFinalizer)
+}
+
+func removeFinalizer(model *v1beta1.Model) {
+	finalizers := make([]string, 0, len(model.Finalizers)-1)
+	for _, finalizer := range model.Finalizers {
+		if finalizer != configFinalizer {
+			finalizers = append(finalizers, finalizer)
+		}
+	}
+	model.Finalizers = finalizers
+}
+
+type modelMapper struct {
+	client client.Client
+}
+
+func (m *modelMapper) Map(object handler.MapObject) []reconcile.Request {
+	pod := object.Object.(*corev1.Pod)
+	if pod.Annotations[configadmission.InjectRegistryAnnotation] != "true" {
+		return []reconcile.Request{}
+	}
+
+	models := &v1beta1.ModelList{}
+	modelOpts := &client.ListOptions{
+		Namespace: pod.Namespace,
+	}
+	err := m.client.List(context.TODO(), models, modelOpts)
+	if err != nil {
+		return []reconcile.Request{}
+	}
+
+	requests := make([]reconcile.Request, 0, len(models.Items))
+	for i, model := range models.Items {
+		requests[i] = reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: model.Namespace,
+				Name:      model.Name,
+			},
+		}
+	}
+	return requests
 }

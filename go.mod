@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/onosproject/onos-api/go v0.6.7
+	github.com/onosproject/onos-config-model-go v0.0.0-20201204085219-061a847a74bf
 	github.com/onosproject/onos-lib-go v0.6.25
 	google.golang.org/grpc v1.33.2
 	k8s.io/api v0.17.3

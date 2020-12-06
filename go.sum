@@ -484,6 +484,8 @@ github.com/onosproject/onos-api/go v0.6.7 h1:OdB+0qteIAxjSWvbinJDNGi7mV0r90LKjRu
 github.com/onosproject/onos-api/go v0.6.7/go.mod h1:U10eWq2WOS9OnACITIebGcFA8dSvekCcSi3rmLY/rPA=
 github.com/onosproject/onos-config v0.6.17 h1:7T4CZnsO4yhD+ZCS9Y6xNBGat2Pnyggh8sMpl1SvGLs=
 github.com/onosproject/onos-config v0.6.17/go.mod h1:13kEZt80y09bKnP5rXqkE88bf6mv+oEYDsPjZc16OXY=
+github.com/onosproject/onos-config-model-go v0.0.0-20201204085219-061a847a74bf h1:5zvACpS9HbKTSMmJmI2sZ1ojZmvl3uP8SSexS0kK/tA=
+github.com/onosproject/onos-config-model-go v0.0.0-20201204085219-061a847a74bf/go.mod h1:dr9qWbihAP3qkH28mIiwcii/CHraxEsa0n1U2xn0pzA=
 github.com/onosproject/onos-lib-go v0.6.18/go.mod h1:x0vnsS7xhJVIHxtRFLmBW3sm9OdKnmTkCCVo8eGy8lU=
 github.com/onosproject/onos-lib-go v0.6.21/go.mod h1:Ntoc4aWD496bF2xoPG1jA/sVRFyw1zNrDpacCaslkfM=
 github.com/onosproject/onos-lib-go v0.6.25 h1:ZXVGwxyn+AACUAUkdUBl84OIlM/ZdzfL2hwYTTBIxLg=
@@ -909,6 +911,8 @@ gopkg.in/yaml.v2 v2.2.4/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.2.7/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.2.8 h1:obN1ZagJSUGI0Ek/LBmuj4SNLPfIny3KsKFopxRdj10=
 gopkg.in/yaml.v2 v2.2.8/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+gopkg.in/yaml.v2 v2.3.0 h1:clyUAQHOM3G0M3f5vQj7LuJrETvjVot3Z5el9nffUtU=
+gopkg.in/yaml.v2 v2.3.0/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gotest.tools v2.2.0+incompatible h1:VsBPFP1AI068pPrMxtb/S8Zkgf9xEmTLJjfM+P5UIEo=
 gotest.tools v2.2.0+incompatible/go.mod h1:DsYFclhRJ6vuDpmuTbkuFWG+y2sxOXAzmJt81HFBacw=
 helm.sh/helm/v3 v3.1.1/go.mod h1:WYsFJuMASa/4XUqLyv54s0U/f3mlAaRErGmyy4z921g=

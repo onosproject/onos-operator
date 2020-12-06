@@ -33,6 +33,26 @@ type Module struct {
 	Data         string `json:"data,omitempty"`
 }
 
+// ModelStatus defines the observed state of Model
+type ModelStatus struct {
+	RegistryStatuses []RegistryStatus `json:"registryStatuses,omitempty"`
+}
+
+// RegistryStatus defines the state of a model in a registry
+type RegistryStatus struct {
+	PodName string     `json:"podName,omitempty"`
+	Phase   ModelPhase `json:"phase,omitempty"`
+}
+
+// ModelPhase is the phase of a model
+type ModelPhase string
+
+const (
+	ModelPending    ModelPhase = "Pending"
+	ModelInstalling ModelPhase = "Installing"
+	ModelInstalled  ModelPhase = "Installed"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -41,7 +61,8 @@ type Module struct {
 type Model struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ModelSpec `json:"spec,omitempty"`
+	Spec              ModelSpec   `json:"spec,omitempty"`
+	Status            ModelStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
