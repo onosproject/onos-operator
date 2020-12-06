@@ -55,9 +55,10 @@ kind: Deployment
 metadata:
   name: my-xapp
   annotations:
-    model.config.onosproject.org/inject: ric
-    compiler.config.onosproject.org/language: go
-    compiler.config.onosproject.org/version: latest
+    config.onosproject.org/inject: model
+    config.onosproject.org/model: ric
+    config.onosproject.org/compiler-language: go
+    config.onosproject.org/compiler-version: latest
 spec:
   replicas: 1
   selector:

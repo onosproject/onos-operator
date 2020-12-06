@@ -11,10 +11,13 @@ import (
 )
 
 const (
-	// RegistryInjectAnnotation is an annotation indicating the registry should be injected into a pod
-	RegistryInjectAnnotation = "registry.config.onosproject.org/inject"
 	// RegistryVersionAnnotation is an annotation indicating the path at which to mount the registry
-	RegistryPathAnnotation = "registry.config.onosproject.org/path"
+	RegistryPathAnnotation = "config.onosproject.org/registry-path"
+)
+
+const (
+	// InjectRegistry is an annotation value indicating that the registry should be injected
+	InjectRegistry = "registry"
 )
 
 const (
@@ -44,15 +47,12 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	}
 
 	// If the pod is annotated with the RegistryInjectAnnotation, inject the module registry
-	registryInject, ok := pod.Annotations[RegistryInjectAnnotation]
-	if !ok || registryInject == "false" {
-		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", RegistryInjectAnnotation))
-	}
-	if registryInject != "true" {
-		return admission.Denied(fmt.Sprintf("'%s' annotation has an invalid value", RegistryInjectAnnotation))
+	modelInject, ok := pod.Annotations[InjectAnnotation]
+	if !ok || modelInject != InjectRegistry {
+		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", InjectAnnotation))
 	}
 
-	// If the pod is annotated with ModelInjectAnnotation, ensure RegistryLanguageAnnotation
+	// If the pod is annotated with InjectAnnotation, ensure RegistryLanguageAnnotation
 	// and RegistryVersionAnnotation are present as well
 	compilerLanguage, ok := pod.Annotations[CompilerLanguageAnnotation]
 	if !ok {
@@ -86,7 +86,7 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 
 	// Add the registry init container
 	container := corev1.Container{
-		Name:  fmt.Sprintf("%s-registry", registryInject),
+		Name:  "model-registry",
 		Image: fmt.Sprintf("onosproject/config-model-registry:%s-%s", compilerLanguage, compilerVersion),
 		Args: []string{
 			"--build-path",
