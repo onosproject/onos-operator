@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -102,7 +103,63 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	// If the model is present, inject the init container into the pod
 	pod.Spec.Containers = append(pod.Spec.Containers, container)
 
-	// Mount the registry volume to all containers
+	// Load existing models via init containers
+	models := &v1beta1.ModelList{}
+	modelOpts := &client.ListOptions{
+		Namespace: pod.Namespace,
+	}
+	if err := i.client.List(context.Background(), models, modelOpts); err != nil {
+		return admission.Errored(http.StatusInternalServerError, err)
+	}
+
+	// For each model, add an init container
+	for _, model := range models.Items {
+		// Add the model volume to the pod
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: model.Name,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: model.Name,
+					},
+				},
+			},
+		})
+
+		// Add the compiler init container
+		container := corev1.Container{
+			Name:  fmt.Sprintf("%s-compiler", modelInject),
+			Image: fmt.Sprintf("onosproject/config-model-compiler:%s-%s", compilerLanguage, compilerVersion),
+			Args: []string{
+				"--name",
+				model.Spec.Type,
+				"--version",
+				model.Spec.Version,
+				"--build-path",
+				buildPath,
+				"--output-path",
+				registryPath,
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      model.Name,
+					MountPath: modelPath,
+				},
+				{
+					Name:      registryVolume,
+					MountPath: registryPath,
+				},
+			},
+		}
+
+		// Add module arguments
+		for _, module := range model.Spec.Modules {
+			container.Args = append(container.Args, "--module", fmt.Sprintf("%s@%s=%s/%s@%s.yang", module.Name, module.Version, modelPath, module.Name, module.Version))
+		}
+
+		// If the model is present, inject the init container into the pod
+		pod.Spec.InitContainers = append(pod.Spec.InitContainers, container)
+	}
 
 	// Marshal the pod and return a patch response
 	marshaledPod, err := json.Marshal(pod)

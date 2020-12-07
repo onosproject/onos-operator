@@ -23,10 +23,6 @@ const (
 )
 
 const (
-	modelVolume = "model"
-)
-
-const (
 	modelPath = "/root/models"
 	buildPath = "/root/build"
 )
@@ -83,19 +79,6 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
-	// Load the associated ConfigMap
-	cm := &corev1.ConfigMap{}
-	cmName := types.NamespacedName{
-		Name:      modelInject,
-		Namespace: pod.Namespace,
-	}
-	if err := i.client.Get(ctx, cmName, cm); err != nil {
-		if errors.IsNotFound(err) {
-			return admission.Denied(fmt.Sprintf("ConfigMap '%s' not found", cmName))
-		}
-		return admission.Errored(http.StatusInternalServerError, err)
-	}
-
 	// Add a registry volume to the pod
 	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
 		Name: registryVolume,
@@ -115,11 +98,11 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 
 	// Add the model volume to the pod
 	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-		Name: modelVolume,
+		Name: model.Name,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: cm.Name,
+					Name: model.Name,
 				},
 			},
 		},
@@ -141,7 +124,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      modelVolume,
+				Name:      model.Name,
 				MountPath: modelPath,
 			},
 			{
@@ -157,7 +140,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 	}
 
 	// If the model is present, inject the init container into the pod
-	pod.Spec.Containers = append(pod.Spec.Containers, container)
+	pod.Spec.InitContainers = append(pod.Spec.InitContainers, container)
 
 	// Marshal the pod and return a patch response
 	marshaledPod, err := json.Marshal(pod)
