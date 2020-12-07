@@ -131,10 +131,10 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			return reconcile.Result{}, err
 		}
 
-		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Namespace, model.Namespace, model.Name)
+		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Name, model.Namespace, model.Name)
 		data := make(map[string]string)
 		for _, module := range model.Spec.Modules {
-			name := fmt.Sprintf("%s@%s", module.Name, module.Version)
+			name := fmt.Sprintf("%s-%s", module.Name, module.Version)
 			data[name] = module.Data
 		}
 
@@ -146,9 +146,11 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			Data: data,
 		}
 		if err := controllerutil.SetOwnerReference(model, cm, r.scheme); err != nil {
+			log.Warnf("Failed to set ConfigMap '%s' owner Model '%s/%s': %s", model.Name, model.Namespace, model.Name, err)
 			return reconcile.Result{}, err
 		}
 		if err := r.client.Create(context.Background(), cm); err != nil {
+			log.Warnf("Failed to create ConfigMap '%s' for Model '%s/%s': %s", model.Name, model.Namespace, model.Name, err)
 			return reconcile.Result{}, err
 		}
 	}
@@ -181,6 +183,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 				}
 				model.Status.RegistryStatuses = append(model.Status.RegistryStatuses, *status)
 				if err := r.client.Status().Update(context.TODO(), model); err != nil {
+					log.Warnf("Failed to update status for Model '%s/%s': %s", model.Namespace, model.Name, err)
 					return reconcile.Result{}, err
 				}
 				return reconcile.Result{}, nil
@@ -192,6 +195,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 					log.Debugf("Installing Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
 					status.Phase = v1beta1.ModelInstalling
 					if err := r.client.Status().Update(context.TODO(), model); err != nil {
+						log.Warnf("Failed to update status for Model '%s/%s': %s", model.Namespace, model.Name, err)
 						return reconcile.Result{}, err
 					}
 					return reconcile.Result{}, nil
@@ -225,6 +229,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 				log.Debugf("Installed Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
 				status.Phase = v1beta1.ModelInstalled
 				if err := r.client.Status().Update(context.TODO(), model); err != nil {
+					log.Warnf("Failed to update status for Model '%s/%s': %s", model.Namespace, model.Name, err)
 					return reconcile.Result{}, err
 				}
 				return reconcile.Result{}, nil
@@ -250,6 +255,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			}
 			model.Status.RegistryStatuses = statuses
 			if err := r.client.Status().Update(context.TODO(), model); err != nil {
+				log.Warnf("Failed to update status for Model '%s/%s': %s", model.Namespace, model.Name, err)
 				return reconcile.Result{}, err
 			}
 			return reconcile.Result{}, nil

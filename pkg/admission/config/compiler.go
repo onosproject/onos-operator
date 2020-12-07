@@ -39,6 +39,8 @@ func (i *CompilerInjector) InjectDecoder(decoder *admission.Decoder) error {
 }
 
 func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request) admission.Response {
+	log.Infof("Received admission request for Pod '%s/%s'", request.Name, request.Namespace)
+
 	// Decode the pod
 	pod := &corev1.Pod{}
 	if err := i.decoder.Decode(request, pod); err != nil {
@@ -50,6 +52,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 	if !ok {
 		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", InjectModelAnnotation))
 	}
+	log.Infof("Injecting model '%s' into Pod '%s/%s'", modelInject, pod.Name, pod.Namespace)
 
 	// If the pod is annotated with InjectModelAnnotation, ensure CompilerLanguageAnnotation
 	// and CompilerVersionAnnotation are present as well
@@ -136,7 +139,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 
 	// Add module arguments
 	for _, module := range model.Spec.Modules {
-		container.Args = append(container.Args, "--module", fmt.Sprintf("%s@%s=%s/%s@%s.yang", module.Name, module.Version, modelPath, module.Name, module.Version))
+		container.Args = append(container.Args, "--module", fmt.Sprintf("%s@%s=%s/%s-%s.yang", module.Name, module.Version, modelPath, module.Name, module.Version))
 	}
 
 	// If the model is present, inject the init container into the pod

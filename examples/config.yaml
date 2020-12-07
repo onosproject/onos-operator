@@ -4,6 +4,7 @@ kind: Model
 metadata:
   name: ric
 spec:
+  type: ric
   version: 1.0.0
   modules:
     - name: test
@@ -54,10 +55,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-xapp
-  annotations:
-    config.onosproject.org/inject-model: ric
-    config.onosproject.org/compiler-language: go
-    config.onosproject.org/compiler-version: latest
+  labels:
+    name: my-xapp
 spec:
   replicas: 1
   selector:
@@ -67,7 +66,11 @@ spec:
     metadata:
       labels:
         name: my-xapp
+      annotations:
+        config.onosproject.org/inject-model: ric
+        config.onosproject.org/compiler-language: go
+        config.onosproject.org/compiler-version: latest
     spec:
       containers:
         - name: my-xapp
-          image: onosproject/my-xapp:latest
+          image: k8s.gcr.io/echoserver:1.4
