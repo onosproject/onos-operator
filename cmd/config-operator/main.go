@@ -90,7 +90,8 @@ func main() {
 
 	// Setup all webhooks
 	if err := configadmission.RegisterWebhooks(mgr); err != nil {
-
+		log.Error(err)
+		os.Exit(1)
 	}
 
 	log.Info("Starting the operator")
