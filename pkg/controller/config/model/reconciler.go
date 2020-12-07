@@ -22,6 +22,7 @@ import (
 	configadmission "github.com/onosproject/onos-operator/pkg/admission/config"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
+	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -110,8 +111,9 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, error) {
 	// Add the finalizer to the model if necessary
-	if !hasFinalizer(model) {
-		addFinalizer(model)
+	if !k8s.HasFinalizer(model, configFinalizer) {
+		log.Debugf("Adding '%s' finalizer to Model '%s/%s'", configFinalizer, model.Namespace, model.Name)
+		k8s.AddFinalizer(model, configFinalizer)
 		err := r.client.Update(context.TODO(), model)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -129,6 +131,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			return reconcile.Result{}, err
 		}
 
+		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Namespace, model.Namespace, model.Name)
 		data := make(map[string]string)
 		for _, module := range model.Spec.Modules {
 			name := fmt.Sprintf("%s@%s", module.Name, module.Version)
@@ -171,6 +174,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			}
 
 			if status == nil {
+				log.Debugf("Initializing Model '%s/%s' status for Pod '%s'", model.Namespace, model.Name, pod.Name)
 				status = &v1beta1.RegistryStatus{
 					PodName: pod.Name,
 					Phase:   v1beta1.ModelPending,
@@ -185,6 +189,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			switch status.Phase {
 			case v1beta1.ModelPending:
 				if pod.Status.PodIP != "" {
+					log.Debugf("Installing Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
 					status.Phase = v1beta1.ModelInstalling
 					if err := r.client.Status().Update(context.TODO(), model); err != nil {
 						return reconcile.Result{}, err
@@ -217,6 +222,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 				if _, err := client.PushModel(context.TODO(), request); err != nil {
 					return reconcile.Result{}, err
 				}
+				log.Debugf("Installed Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
 				status.Phase = v1beta1.ModelInstalled
 				if err := r.client.Status().Update(context.TODO(), model); err != nil {
 					return reconcile.Result{}, err
@@ -234,7 +240,8 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			Namespace: model.Namespace,
 			Name:      status.PodName,
 		}
-		if err := r.client.Get(context.TODO(), podName, pod); err != nil && !errors.IsNotFound(err) {
+		if err := r.client.Get(context.TODO(), podName, pod); err != nil && errors.IsNotFound(err) {
+			log.Debugf("Forgetting Model '%s/%s' status for Pod '%s'", model.Namespace, model.Name, pod.Name)
 			statuses := make([]v1beta1.RegistryStatus, 0, len(model.Status.RegistryStatuses)-1)
 			for j, status := range model.Status.RegistryStatuses {
 				if i != j {
@@ -253,9 +260,10 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 
 func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, error) {
 	// If the model has already been finalized, exit reconciliation
-	if !hasFinalizer(model) {
+	if !k8s.HasFinalizer(model, configFinalizer) {
 		return reconcile.Result{}, nil
 	}
+	log.Debugf("Finalizing Model '%s/%s'", model.Namespace, model.Name)
 
 	// Find all pods into which the model can be injected
 	pods := &corev1.PodList{}
@@ -269,6 +277,7 @@ func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, er
 	// Install the model to each registry
 	for _, pod := range pods.Items {
 		if pod.Annotations[configadmission.InjectRegistryAnnotation] == "true" {
+			log.Debugf("Deleting Model '%s/%s' from Pod '%s'", model.Namespace, model.Name, pod.Name)
 			conn, err := grpc.ConnectAddress(r.client, pod.Status.PodIP)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -286,34 +295,12 @@ func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, er
 	}
 
 	// Once the model has been deleted, remove the topology finalizer
-	removeFinalizer(model)
+	log.Debugf("Model '%s/%s' finalized", model.Namespace, model.Name)
+	k8s.RemoveFinalizer(model, configFinalizer)
 	if err := r.client.Update(context.TODO(), model); err != nil {
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
-}
-
-func hasFinalizer(model *v1beta1.Model) bool {
-	for _, finalizer := range model.Finalizers {
-		if finalizer == configFinalizer {
-			return true
-		}
-	}
-	return false
-}
-
-func addFinalizer(model *v1beta1.Model) {
-	model.Finalizers = append(model.Finalizers, configFinalizer)
-}
-
-func removeFinalizer(model *v1beta1.Model) {
-	finalizers := make([]string, 0, len(model.Finalizers)-1)
-	for _, finalizer := range model.Finalizers {
-		if finalizer != configFinalizer {
-			finalizers = append(finalizers, finalizer)
-		}
-	}
-	model.Finalizers = finalizers
 }
 
 type modelMapper struct {

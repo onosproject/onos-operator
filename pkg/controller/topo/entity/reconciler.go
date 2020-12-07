@@ -21,6 +21,7 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/topo/v1beta1"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
+	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"google.golang.org/grpc/status"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
@@ -135,8 +136,8 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 	}
 
 	// Add the finalizer to the entity if necessary
-	if !hasFinalizer(entity) {
-		addFinalizer(entity)
+	if !k8s.HasFinalizer(entity, topoFinalizer) {
+		k8s.AddFinalizer(entity, topoFinalizer)
 		err := r.client.Update(context.TODO(), entity)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -168,7 +169,7 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 
 func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, error) {
 	// If the entity has already been finalized, exit reconciliation
-	if !hasFinalizer(entity) {
+	if !k8s.HasFinalizer(entity, topoFinalizer) {
 		return reconcile.Result{}, nil
 	}
 
@@ -187,7 +188,7 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 	}
 
 	// Once the entity has been deleted, remove the topology finalizer
-	removeFinalizer(entity)
+	k8s.RemoveFinalizer(entity, topoFinalizer)
 	if err := r.client.Update(context.TODO(), entity); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -266,29 +267,6 @@ func (r *Reconciler) deleteEntity(entity *v1beta1.Entity, client topo.TopoClient
 		return err
 	}
 	return nil
-}
-
-func hasFinalizer(entity *v1beta1.Entity) bool {
-	for _, finalizer := range entity.Finalizers {
-		if finalizer == topoFinalizer {
-			return true
-		}
-	}
-	return false
-}
-
-func addFinalizer(entity *v1beta1.Entity) {
-	entity.Finalizers = append(entity.Finalizers, topoFinalizer)
-}
-
-func removeFinalizer(entity *v1beta1.Entity) {
-	finalizers := make([]string, 0, len(entity.Finalizers)-1)
-	for _, finalizer := range entity.Finalizers {
-		if finalizer != topoFinalizer {
-			finalizers = append(finalizers, finalizer)
-		}
-	}
-	entity.Finalizers = finalizers
 }
 
 type kindMapper struct {

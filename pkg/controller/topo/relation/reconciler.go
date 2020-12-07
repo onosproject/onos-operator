@@ -21,6 +21,7 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/topo/v1beta1"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
+	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"google.golang.org/grpc/status"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
@@ -135,8 +136,8 @@ func (r *Reconciler) reconcileCreate(relation *v1beta1.Relation) (reconcile.Resu
 	}
 
 	// Add the finalizer to the relation if necessary
-	if !hasFinalizer(relation) {
-		addFinalizer(relation)
+	if !k8s.HasFinalizer(relation, topoFinalizer) {
+		k8s.AddFinalizer(relation, topoFinalizer)
 		err := r.client.Update(context.TODO(), relation)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -168,7 +169,7 @@ func (r *Reconciler) reconcileCreate(relation *v1beta1.Relation) (reconcile.Resu
 
 func (r *Reconciler) reconcileDelete(relation *v1beta1.Relation) (reconcile.Result, error) {
 	// If the relation has already been finalized, exit reconciliation
-	if !hasFinalizer(relation) {
+	if !k8s.HasFinalizer(relation, topoFinalizer) {
 		return reconcile.Result{}, nil
 	}
 
@@ -187,7 +188,7 @@ func (r *Reconciler) reconcileDelete(relation *v1beta1.Relation) (reconcile.Resu
 	}
 
 	// Once the relation has been deleted, remove the topology finalizer
-	removeFinalizer(relation)
+	k8s.RemoveFinalizer(relation, topoFinalizer)
 	if err := r.client.Update(context.TODO(), relation); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -268,29 +269,6 @@ func (r *Reconciler) deleteRelation(relation *v1beta1.Relation, client topo.Topo
 		return err
 	}
 	return nil
-}
-
-func hasFinalizer(relation *v1beta1.Relation) bool {
-	for _, finalizer := range relation.Finalizers {
-		if finalizer == topoFinalizer {
-			return true
-		}
-	}
-	return false
-}
-
-func addFinalizer(relation *v1beta1.Relation) {
-	relation.Finalizers = append(relation.Finalizers, topoFinalizer)
-}
-
-func removeFinalizer(relation *v1beta1.Relation) {
-	finalizers := make([]string, 0, len(relation.Finalizers)-1)
-	for _, finalizer := range relation.Finalizers {
-		if finalizer != topoFinalizer {
-			finalizers = append(finalizers, finalizer)
-		}
-	}
-	relation.Finalizers = finalizers
 }
 
 type kindMapper struct {

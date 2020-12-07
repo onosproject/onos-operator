@@ -21,6 +21,7 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/topo/v1beta1"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
+	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"google.golang.org/grpc/status"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -115,8 +116,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 func (r *Reconciler) reconcileCreate(kind *v1beta1.Kind) (reconcile.Result, error) {
 	// Add the finalizer to the kind if necessary
-	if !hasFinalizer(kind) {
-		addFinalizer(kind)
+	if !k8s.HasFinalizer(kind, topoFinalizer) {
+		k8s.AddFinalizer(kind, topoFinalizer)
 		err := r.client.Update(context.TODO(), kind)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -148,7 +149,7 @@ func (r *Reconciler) reconcileCreate(kind *v1beta1.Kind) (reconcile.Result, erro
 
 func (r *Reconciler) reconcileDelete(kind *v1beta1.Kind) (reconcile.Result, error) {
 	// If the kind has already been finalized, exit reconciliation
-	if !hasFinalizer(kind) {
+	if !k8s.HasFinalizer(kind, topoFinalizer) {
 		return reconcile.Result{}, nil
 	}
 
@@ -167,7 +168,7 @@ func (r *Reconciler) reconcileDelete(kind *v1beta1.Kind) (reconcile.Result, erro
 	}
 
 	// Once the kind has been deleted, remove the topology finalizer
-	removeFinalizer(kind)
+	k8s.RemoveFinalizer(kind, topoFinalizer)
 	if err := r.client.Update(context.TODO(), kind); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -247,27 +248,4 @@ func (r *Reconciler) deleteKind(kind *v1beta1.Kind, client topo.TopoClient) erro
 		return err
 	}
 	return nil
-}
-
-func hasFinalizer(kind *v1beta1.Kind) bool {
-	for _, finalizer := range kind.Finalizers {
-		if finalizer == topoFinalizer {
-			return true
-		}
-	}
-	return false
-}
-
-func addFinalizer(kind *v1beta1.Kind) {
-	kind.Finalizers = append(kind.Finalizers, topoFinalizer)
-}
-
-func removeFinalizer(kind *v1beta1.Kind) {
-	finalizers := make([]string, 0, len(kind.Finalizers)-1)
-	for _, finalizer := range kind.Finalizers {
-		if finalizer != topoFinalizer {
-			finalizers = append(finalizers, finalizer)
-		}
-	}
-	kind.Finalizers = finalizers
 }
