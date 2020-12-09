@@ -43,6 +43,7 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	// Decode the pod
 	pod := &corev1.Pod{}
 	if err := i.decoder.Decode(request, pod); err != nil {
+		log.Errorf("Failed to inject registry into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
@@ -57,10 +58,12 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	// and RegistryVersionAnnotation are present as well
 	compilerLanguage, ok := pod.Annotations[CompilerLanguageAnnotation]
 	if !ok {
+		log.Errorf("Failed to inject registry into Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerLanguageAnnotation)
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", CompilerLanguageAnnotation))
 	}
 	compilerVersion, ok := pod.Annotations[CompilerVersionAnnotation]
 	if !ok {
+		log.Errorf("Failed to inject registry into Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerVersionAnnotation)
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", CompilerVersionAnnotation))
 	}
 	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
@@ -112,6 +115,7 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		Namespace: pod.Namespace,
 	}
 	if err := i.client.List(context.Background(), models, modelOpts); err != nil {
+		log.Errorf("Failed to inject registry into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
@@ -167,6 +171,7 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	// Marshal the pod and return a patch response
 	marshaledPod, err := json.Marshal(pod)
 	if err != nil {
+		log.Errorf("Failed to inject registry into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshaledPod)

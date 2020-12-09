@@ -39,11 +39,7 @@ func printVersion() {
 }
 
 func main() {
-	var namespace string
-	if len(os.Args) > 1 {
-		namespace = os.Args[1]
-	}
-
+	//logf.SetLogger(zap.New())
 	printVersion()
 
 	// Get a config to talk to the apiserver
@@ -67,12 +63,11 @@ func main() {
 	}()
 
 	// Create a new Cmd to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, manager.Options{Namespace: namespace})
+	mgr, err := manager.New(cfg, manager.Options{})
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
-	mgr.GetClient()
 
 	log.Info("Registering components")
 

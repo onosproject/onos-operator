@@ -134,7 +134,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Name, model.Namespace, model.Name)
 		data := make(map[string]string)
 		for _, module := range model.Spec.Modules {
-			name := fmt.Sprintf("%s-%s", module.Name, module.Version)
+			name := fmt.Sprintf("%s-%s.yang", module.Name, module.Version)
 			data[name] = module.Data
 		}
 

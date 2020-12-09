@@ -58,10 +58,12 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 	// and CompilerVersionAnnotation are present as well
 	compilerLanguage, ok := pod.Annotations[CompilerLanguageAnnotation]
 	if !ok {
+		log.Errorf("Failed to inject model '%s' into Pod '%s/%s': '%s' annotation not found", modelInject, pod.Name, pod.Namespace, CompilerLanguageAnnotation)
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", CompilerLanguageAnnotation))
 	}
 	compilerVersion, ok := pod.Annotations[CompilerVersionAnnotation]
 	if !ok {
+		log.Errorf("Failed to inject model '%s' into Pod '%s/%s': '%s' annotation not found", modelInject, pod.Name, pod.Namespace, CompilerVersionAnnotation)
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", CompilerVersionAnnotation))
 	}
 	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
@@ -73,9 +75,10 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 	model := &configv1beta1.Model{}
 	modelName := types.NamespacedName{
 		Name:      modelInject,
-		Namespace: pod.Namespace,
+		Namespace: request.Namespace,
 	}
 	if err := i.client.Get(ctx, modelName, model); err != nil {
+		log.Errorf("Failed to inject model '%s' into Pod '%s/%s': %s", modelInject, pod.Name, pod.Namespace, err)
 		if errors.IsNotFound(err) {
 			return admission.Denied(fmt.Sprintf("Model '%s' not found", modelName))
 		}
@@ -148,6 +151,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 	// Marshal the pod and return a patch response
 	marshaledPod, err := json.Marshal(pod)
 	if err != nil {
+		log.Errorf("Failed to inject model '%s' into Pod '%s/%s': %s", modelInject, pod.Name, pod.Namespace, err)
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshaledPod)
