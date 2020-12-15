@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,7 +22,7 @@ const (
 )
 
 const (
-	defaultRegistryPath = "/root/registry"
+	defaultRegistryPath = "/etc/onos/plugins"
 )
 
 // RegistryInjector is a mutating webhook for injecting the registry container into pods
@@ -72,20 +71,24 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	}
 
 	// Add a registry volume to the pod
-	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-		Name: registryVolume,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
+	if !hasRegistryVolume(pod) {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: registryVolume,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+	}
 
 	// Mount the registry volume to existing containers
 	for i, container := range pod.Spec.Containers {
-		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      registryVolume,
-			MountPath: registryPath,
-		})
-		pod.Spec.Containers[i] = container
+		if !hasRegistryVolumeMount(container) {
+			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+				Name:      registryVolume,
+				MountPath: registryPath,
+			})
+			pod.Spec.Containers[i] = container
+		}
 	}
 
 	// Add the registry init container
@@ -109,65 +112,6 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	// If the model is present, inject the init container into the pod
 	pod.Spec.Containers = append(pod.Spec.Containers, container)
 
-	// Load existing models via init containers
-	models := &v1beta1.ModelList{}
-	modelOpts := &client.ListOptions{
-		Namespace: pod.Namespace,
-	}
-	if err := i.client.List(context.Background(), models, modelOpts); err != nil {
-		log.Errorf("Failed to inject registry into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
-		return admission.Errored(http.StatusInternalServerError, err)
-	}
-
-	// For each model, add an init container
-	for _, model := range models.Items {
-		// Add the model volume to the pod
-		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-			Name: model.Name,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: model.Name,
-					},
-				},
-			},
-		})
-
-		// Add the compiler init container
-		container := corev1.Container{
-			Name:  fmt.Sprintf("%s-compiler", modelInject),
-			Image: fmt.Sprintf("onosproject/config-model-compiler:%s-%s", compilerLanguage, compilerVersion),
-			Args: []string{
-				"--name",
-				model.Spec.Type,
-				"--version",
-				model.Spec.Version,
-				"--build-path",
-				buildPath,
-				"--output-path",
-				registryPath,
-			},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      model.Name,
-					MountPath: modelPath,
-				},
-				{
-					Name:      registryVolume,
-					MountPath: registryPath,
-				},
-			},
-		}
-
-		// Add module arguments
-		for _, module := range model.Spec.Modules {
-			container.Args = append(container.Args, "--module", fmt.Sprintf("%s@%s=%s/%s-%s.yang", module.Name, module.Version, modelPath, module.Name, module.Version))
-		}
-
-		// If the model is present, inject the init container into the pod
-		pod.Spec.InitContainers = append(pod.Spec.InitContainers, container)
-	}
-
 	// Marshal the pod and return a patch response
 	marshaledPod, err := json.Marshal(pod)
 	if err != nil {
@@ -175,6 +119,24 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshaledPod)
+}
+
+func hasRegistryVolume(pod *corev1.Pod) bool {
+	for _, volume := range pod.Spec.Volumes {
+		if volume.Name == registryVolume {
+			return true
+		}
+	}
+	return false
+}
+
+func hasRegistryVolumeMount(container corev1.Container) bool {
+	for _, mount := range container.VolumeMounts {
+		if mount.Name == registryVolume {
+			return true
+		}
+	}
+	return false
 }
 
 var _ admission.Handler = &RegistryInjector{}

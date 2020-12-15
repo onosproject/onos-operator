@@ -20,17 +20,23 @@ import (
 
 // ModelSpec is the k8s spec for a Model resource
 type ModelSpec struct {
-	Type    string   `json:"type,omitempty"`
-	Version string   `json:"version,omitempty"`
-	Modules []Module `json:"modules,omitempty"`
+	Type         string       `json:"type,omitempty"`
+	Version      string       `json:"version,omitempty"`
+	Modules      []Module     `json:"modules,omitempty"`
+	Dependencies []Dependency `json:"dependencies,omitempty"`
 }
 
-// Module defines a Yang model
+// Module defines a module
 type Module struct {
 	Name         string `json:"name,omitempty"`
 	Organization string `json:"organization,omitempty"`
 	Version      string `json:"version,omitempty"`
 	Data         string `json:"data,omitempty"`
+}
+
+// Dependency defines a model dependency
+type Dependency struct {
+	metav1.ObjectMeta `json:",inline"`
 }
 
 // ModelStatus defines the observed state of Model
