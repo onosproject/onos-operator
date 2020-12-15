@@ -167,9 +167,11 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 	// Install the model to each registry
 	for _, pod := range pods.Items {
 		if pod.Annotations[configadmission.InjectRegistryAnnotation] == "true" {
+			var index int
 			var status *v1beta1.RegistryStatus
-			for _, reg := range model.Status.RegistryStatuses {
+			for i, reg := range model.Status.RegistryStatuses {
 				if reg.PodName == pod.Name {
+					index = i
 					status = &reg
 					break
 				}
@@ -193,7 +195,10 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			case v1beta1.ModelPending:
 				if pod.Status.PodIP != "" {
 					log.Debugf("Installing Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
-					status.Phase = v1beta1.ModelInstalling
+					model.Status.RegistryStatuses[index] = v1beta1.RegistryStatus{
+						PodName: pod.Name,
+						Phase:   v1beta1.ModelInstalling,
+					}
 					if err := r.client.Status().Update(context.TODO(), model); err != nil {
 						log.Warnf("Failed to update status for Model '%s/%s': %s", model.Namespace, model.Name, err)
 						return reconcile.Result{}, err
@@ -201,7 +206,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 					return reconcile.Result{}, nil
 				}
 			case v1beta1.ModelInstalling:
-				conn, err := grpc.ConnectAddress(r.client, pod.Status.PodIP)
+				conn, err := grpc.ConnectAddress(fmt.Sprintf("%s:5151", pod.Status.PodIP))
 				if err != nil {
 					return reconcile.Result{}, err
 				}
@@ -227,7 +232,10 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 					return reconcile.Result{}, err
 				}
 				log.Debugf("Installed Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
-				status.Phase = v1beta1.ModelInstalled
+				model.Status.RegistryStatuses[index] = v1beta1.RegistryStatus{
+					PodName: pod.Name,
+					Phase:   v1beta1.ModelInstalled,
+				}
 				if err := r.client.Status().Update(context.TODO(), model); err != nil {
 					log.Warnf("Failed to update status for Model '%s/%s': %s", model.Namespace, model.Name, err)
 					return reconcile.Result{}, err
@@ -284,7 +292,7 @@ func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, er
 	for _, pod := range pods.Items {
 		if pod.Annotations[configadmission.InjectRegistryAnnotation] == "true" {
 			log.Debugf("Deleting Model '%s/%s' from Pod '%s'", model.Namespace, model.Name, pod.Name)
-			conn, err := grpc.ConnectAddress(r.client, pod.Status.PodIP)
+			conn, err := grpc.ConnectAddress(fmt.Sprintf("%s:5151", pod.Status.PodIP))
 			if err != nil {
 				return reconcile.Result{}, err
 			}

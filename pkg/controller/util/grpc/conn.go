@@ -28,7 +28,7 @@ import (
 )
 
 // ConnectAddress connects to a gRPC endpoint
-func ConnectAddress(c client.Client, address string) (*grpc.ClientConn, error) {
+func ConnectAddress(address string) (*grpc.ClientConn, error) {
 	cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
 	if err != nil {
 		return nil, err
@@ -68,5 +68,5 @@ func ConnectService(c client.Client, namespace, name string) (*grpc.ClientConn, 
 	if clusterDomain == "" {
 		clusterDomain = "cluster.local"
 	}
-	return ConnectAddress(c, fmt.Sprintf("%s.%s.svc.%s:%d", service.Name, service.Namespace, clusterDomain, service.Spec.Ports[0].Port))
+	return ConnectAddress(fmt.Sprintf("%s.%s.svc.%s:%d", service.Name, service.Namespace, clusterDomain, service.Spec.Ports[0].Port))
 }
