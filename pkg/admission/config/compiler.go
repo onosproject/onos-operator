@@ -25,7 +25,7 @@ const (
 
 const (
 	modelPath = "/etc/onos/models"
-	buildPath = "/tmp/model-build"
+	buildPath = "/build"
 )
 
 // CompilerInjector is a mutating webhook for injecting the compiler container into pods
