@@ -74,3 +74,28 @@ spec:
       containers:
         - name: my-xapp
           image: k8s.gcr.io/echoserver:1.4
+---
+# This Deployment defines Deployment annotated for config registry injection
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-registry
+  labels:
+    name: my-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: my-registry
+  template:
+    metadata:
+      labels:
+        name: my-registry
+      annotations:
+        config.onosproject.org/inject-registry: "true"
+        config.onosproject.org/compiler-language: go
+        config.onosproject.org/compiler-version: latest
+    spec:
+      containers:
+        - name: my-registry
+          image: k8s.gcr.io/echoserver:1.4

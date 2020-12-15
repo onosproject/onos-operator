@@ -328,7 +328,7 @@ func (m *modelMapper) Map(object handler.MapObject) []reconcile.Request {
 		return []reconcile.Request{}
 	}
 
-	requests := make([]reconcile.Request, 0, len(models.Items))
+	requests := make([]reconcile.Request, len(models.Items))
 	for i, model := range models.Items {
 		requests[i] = reconcile.Request{
 			NamespacedName: types.NamespacedName{

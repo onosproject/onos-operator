@@ -290,7 +290,7 @@ func (m *kindMapper) Map(object handler.MapObject) []reconcile.Request {
 		return []reconcile.Request{}
 	}
 
-	requests := make([]reconcile.Request, 0, len(relations.Items))
+	requests := make([]reconcile.Request, len(relations.Items))
 	for i, relation := range relations.Items {
 		requests[i] = reconcile.Request{
 			NamespacedName: types.NamespacedName{
