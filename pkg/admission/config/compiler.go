@@ -77,7 +77,12 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 			log.Errorf("Failed to inject models into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
-		models = modelList.Items
+
+		for _, model := range modelList.Items {
+			if model.Spec.Plugin != nil {
+				models = append(models, model)
+			}
+		}
 	} else if modelInject, ok := pod.Annotations[InjectModelAnnotation]; ok && modelInject != "" {
 		model := &configv1beta1.Model{}
 		modelName := types.NamespacedName{
@@ -91,7 +96,10 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 			}
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
-		models = append(models, *model)
+
+		if model.Spec.Plugin != nil {
+			models = append(models, *model)
+		}
 	} else {
 		return admission.Allowed("model annotations not found")
 	}
@@ -144,13 +152,13 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 
 		// Add the compiler init container
 		container := corev1.Container{
-			Name:  fmt.Sprintf("%s-%s-compiler", model.Spec.Type, strings.ReplaceAll(model.Spec.Version, ".", "-")),
+			Name:  fmt.Sprintf("%s-%s-compiler", model.Spec.Plugin.Type, strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
 			Image: fmt.Sprintf("onosproject/config-model-compiler:%s-%s", compilerLanguage, compilerVersion),
 			Args: []string{
 				"--name",
-				model.Spec.Type,
+				model.Spec.Plugin.Type,
 				"--version",
-				model.Spec.Version,
+				model.Spec.Plugin.Version,
 				"--build-path",
 				buildPath,
 				"--output-path",

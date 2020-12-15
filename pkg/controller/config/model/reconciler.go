@@ -118,16 +118,6 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 }
 
 func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, error) {
-	// Add the finalizer to the model if necessary
-	if !k8s.HasFinalizer(model, configFinalizer) {
-		log.Debugf("Adding '%s' finalizer to Model '%s/%s'", configFinalizer, model.Namespace, model.Name)
-		k8s.AddFinalizer(model, configFinalizer)
-		err := r.client.Update(context.TODO(), model)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
 	// Create a ConfigMap to store the modules
 	cm := &corev1.ConfigMap{}
 	cmName := types.NamespacedName{
@@ -162,6 +152,21 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		}
 		if err := r.client.Create(context.Background(), cm); err != nil {
 			log.Warnf("Failed to create ConfigMap '%s' for Model '%s/%s': %s", model.Name, model.Namespace, model.Name, err)
+			return reconcile.Result{}, err
+		}
+	}
+
+	// If the model does not define a plugin configuration, it doesn't need to be injected into any pods
+	if model.Spec.Plugin == nil {
+		return reconcile.Result{}, nil
+	}
+
+	// Add the finalizer to the model if necessary
+	if !k8s.HasFinalizer(model, configFinalizer) {
+		log.Debugf("Adding '%s' finalizer to Model '%s/%s'", configFinalizer, model.Namespace, model.Name)
+		k8s.AddFinalizer(model, configFinalizer)
+		err := r.client.Update(context.TODO(), model)
+		if err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -234,8 +239,8 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 
 				request := &configmodel.PushModelRequest{
 					Model: &configmodel.ConfigModel{
-						Name:    model.Spec.Type,
-						Version: model.Spec.Version,
+						Name:    model.Spec.Plugin.Type,
+						Version: model.Spec.Plugin.Version,
 						Modules: modules,
 					},
 				}
@@ -352,6 +357,11 @@ func (r *Reconciler) getModuleConfigs(model *v1beta1.Model) ([]*configmodel.Conf
 }
 
 func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, error) {
+	// If the model does not define a plugin configuration, it shouldn't have been injected into any pods
+	if model.Spec.Plugin == nil {
+		return reconcile.Result{}, nil
+	}
+
 	// If the model has already been finalized, exit reconciliation
 	if !k8s.HasFinalizer(model, configFinalizer) {
 		return reconcile.Result{}, nil
@@ -378,8 +388,8 @@ func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, er
 			defer conn.Close()
 			client := configmodel.NewConfigModelRegistryServiceClient(conn)
 			request := &configmodel.DeleteModelRequest{
-				Name:    model.Spec.Type,
-				Version: model.Spec.Version,
+				Name:    model.Spec.Plugin.Type,
+				Version: model.Spec.Plugin.Version,
 			}
 			if _, err := client.DeleteModel(context.TODO(), request); err != nil {
 				return reconcile.Result{}, err

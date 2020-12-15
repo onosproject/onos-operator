@@ -20,10 +20,15 @@ import (
 
 // ModelSpec is the k8s spec for a Model resource
 type ModelSpec struct {
-	Type         string       `json:"type,omitempty"`
-	Version      string       `json:"version,omitempty"`
+	Plugin       *PluginSpec  `json:"plugin,omitempty"`
 	Modules      []Module     `json:"modules,omitempty"`
 	Dependencies []Dependency `json:"dependencies,omitempty"`
+}
+
+// PluginSpec is the spec for a Model plugin
+type PluginSpec struct {
+	Type    string `json:"type,omitempty"`
+	Version string `json:"version,omitempty"`
 }
 
 // Module defines a module

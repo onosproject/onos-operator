@@ -24,14 +24,17 @@ spec:
           properties:
             spec:
               type: object
-              required:
-                - type
-                - version
               properties:
-                type:
-                  type: string
-                version:
-                  type: string
+                plugin:
+                  type: object
+                  required:
+                    - type
+                    - version
+                  properties:
+                    type:
+                      type: string
+                    version:
+                      type: string
                 dependencies:
                   type: array
                   items:
