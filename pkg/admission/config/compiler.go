@@ -1,3 +1,17 @@
+// Copyright 2019-present Open Networking Foundation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package config
 
 import (
@@ -18,14 +32,23 @@ const (
 	// InjectModelAnnotation is an annotation indicating the model to inject a model into a pod
 	InjectModelAnnotation = "config.onosproject.org/inject-model"
 	// CompilerLanguageAnnotation is an annotation indicating which compiler language to use to compile a model
-	CompilerLanguageAnnotation = "config.onosproject.org/compiler-language"
+	CompilerLanguageAnnotation = "compiler.config.onosproject.org/language"
 	// CompilerVersionAnnotation is an annotation indicating which compiler version to use to compile a model
-	CompilerVersionAnnotation = "config.onosproject.org/compiler-version"
+	CompilerVersionAnnotation = "compiler.config.onosproject.org/version"
+	// CompilerGoVersionAnnotation is an annotation indicating the Go version for which to compile a model
+	CompilerGoVersionAnnotation = "compiler.config.onosproject.org/go-version"
+	// CompilerGolangBuildVersionAnnotation is an annotation indicating the onosproject/go-build version for which to compile a model
+	CompilerGolangBuildVersionAnnotation = "compiler.config.onosproject.org/golang-build-version"
+	// CompilerGoModTargetAnnotation is an annotation indicating the Go module for which to compile a model
+	CompilerGoModTargetAnnotation  = "compiler.config.onosproject.org/go-mod-target"
+	// CompilerGoModReplaceAnnotation is an annotation indicating a replacement for the target Go module
+	CompilerGoModReplaceAnnotation = "compiler.config.onosproject.org/go-mod-replace"
 )
 
 const (
-	modelPath = "/etc/onos/models"
-	buildPath = "/build"
+	goLanguage = "go"
+	modelPath  = "/etc/onos/models"
+	buildPath  = "/build"
 )
 
 // CompilerInjector is a mutating webhook for injecting the compiler container into pods
@@ -60,6 +83,9 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 		log.Errorf("Skipping plugin injection for Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerVersionAnnotation)
 		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", CompilerVersionAnnotation))
 	}
+	golangBuildVersion := pod.Annotations[CompilerGolangBuildVersionAnnotation]
+	goModTarget := pod.Annotations[CompilerGoModTargetAnnotation]
+	goModReplace := pod.Annotations[CompilerGoModReplaceAnnotation]
 	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
 	if !ok {
 		registryPath = defaultRegistryPath
@@ -102,6 +128,11 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 		}
 	} else {
 		return admission.Allowed("model annotations not found")
+	}
+
+	// Only Go is supported
+	if compilerLanguage != goLanguage {
+		return admission.Denied(fmt.Sprintf("Unsupported compiler language '%s'", compilerLanguage))
 	}
 
 	for _, model := range models {
@@ -150,20 +181,47 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 			},
 		})
 
+		args := []string{
+			"--name",
+			model.Spec.Plugin.Type,
+			"--version",
+			model.Spec.Plugin.Version,
+			"--build-path",
+			buildPath,
+			"--output-path",
+			registryPath,
+		}
+
+		if goModTarget != "" {
+			args = append(args, "--target", goModTarget)
+		}
+
+		if goModReplace != "" {
+			args = append(args, "--replace", goModReplace)
+		}
+
+		// Add module arguments
+		for module, file := range files {
+			args = append(args, "--module", fmt.Sprintf("%s=%s/%s", module, modelPath, file))
+		}
+
+		var tags []string
+		if compilerLanguage != "" {
+			tags = append(tags, compilerLanguage)
+		}
+		if compilerVersion != "" {
+			tags = append(tags, compilerVersion)
+		}
+		if golangBuildVersion != "" {
+			tags = append(tags, fmt.Sprintf("build-%s", golangBuildVersion))
+		}
+		image := fmt.Sprintf("onosproject/config-model-compiler:%s", strings.Join(tags, "-"))
+
 		// Add the compiler init container
 		container := corev1.Container{
 			Name:  fmt.Sprintf("%s-%s-compiler", model.Spec.Plugin.Type, strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
-			Image: fmt.Sprintf("onosproject/config-model-compiler:%s-%s", compilerLanguage, compilerVersion),
-			Args: []string{
-				"--name",
-				model.Spec.Plugin.Type,
-				"--version",
-				model.Spec.Plugin.Version,
-				"--build-path",
-				buildPath,
-				"--output-path",
-				registryPath,
-			},
+			Image: image,
+			Args:  args,
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      model.Name,
@@ -174,11 +232,6 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 					MountPath: registryPath,
 				},
 			},
-		}
-
-		// Add module arguments
-		for module, file := range files {
-			container.Args = append(container.Args, "--module", fmt.Sprintf("%s=%s/%s", module, modelPath, file))
 		}
 
 		// If the model is present, inject the init container into the pod

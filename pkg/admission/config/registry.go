@@ -1,3 +1,17 @@
+// Copyright 2019-present Open Networking Foundation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package config
 
 import (
@@ -8,6 +22,7 @@ import (
 	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"strings"
 )
 
 const (
@@ -65,6 +80,8 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		log.Errorf("Failed to inject registry into Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerVersionAnnotation)
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", CompilerVersionAnnotation))
 	}
+	goBuildVersion := pod.Annotations[CompilerGolangBuildVersionAnnotation]
+	goModule := pod.Annotations[CompilerGoModTargetAnnotation]
 	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
 	if !ok {
 		registryPath = defaultRegistryPath
@@ -91,16 +108,34 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		}
 	}
 
+	args := []string{
+		"--build-path",
+		buildPath,
+		"--registry-path",
+		registryPath,
+	}
+
+	if goModule != "" {
+		args = append(args, "--target", goModule)
+	}
+
+	var tags []string
+	if compilerLanguage != "" {
+		tags = append(tags, compilerLanguage)
+	}
+	if compilerVersion != "" {
+		tags = append(tags, compilerVersion)
+	}
+	if goBuildVersion != "" {
+		tags = append(tags, fmt.Sprintf("build%s", goBuildVersion))
+	}
+	image := fmt.Sprintf("onosproject/config-model-registry:%s", strings.Join(tags, "-"))
+
 	// Add the registry init container
 	container := corev1.Container{
 		Name:  fmt.Sprintf("model-registry"),
-		Image: fmt.Sprintf("onosproject/config-model-registry:%s-%s", compilerLanguage, compilerVersion),
-		Args: []string{
-			"--build-path",
-			buildPath,
-			"--registry-path",
-			registryPath,
-		},
+		Image: image,
+		Args:  args,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      registryVolume,
