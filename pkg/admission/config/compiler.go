@@ -75,12 +75,12 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 	// and CompilerVersionAnnotation are present as well
 	compilerLanguage, ok := pod.Annotations[CompilerLanguageAnnotation]
 	if !ok {
-		log.Errorf("Skipping plugin injection for Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerLanguageAnnotation)
+		log.Debugf("Skipping plugin injection for Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerLanguageAnnotation)
 		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", CompilerLanguageAnnotation))
 	}
 	compilerVersion, ok := pod.Annotations[CompilerVersionAnnotation]
 	if !ok {
-		log.Errorf("Skipping plugin injection for Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerVersionAnnotation)
+		log.Debugf("Skipping plugin injection for Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerVersionAnnotation)
 		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", CompilerVersionAnnotation))
 	}
 	golangBuildVersion := pod.Annotations[CompilerGolangBuildVersionAnnotation]

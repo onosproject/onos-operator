@@ -81,7 +81,8 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", CompilerVersionAnnotation))
 	}
 	goBuildVersion := pod.Annotations[CompilerGolangBuildVersionAnnotation]
-	goModule := pod.Annotations[CompilerGoModTargetAnnotation]
+	goModTarget := pod.Annotations[CompilerGoModTargetAnnotation]
+	goModReplace := pod.Annotations[CompilerGoModReplaceAnnotation]
 	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
 	if !ok {
 		registryPath = defaultRegistryPath
@@ -115,8 +116,12 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		registryPath,
 	}
 
-	if goModule != "" {
-		args = append(args, "--target", goModule)
+	if goModTarget != "" {
+		args = append(args, "--target", goModTarget)
+	}
+
+	if goModReplace != "" {
+		args = append(args, "--replace", goModReplace)
 	}
 
 	var tags []string
