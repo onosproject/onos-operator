@@ -312,56 +312,6 @@ spec:
             status:
               type: object
 ---
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: config-operator
-webhooks:
-  - name: compiler.config.onosproject.org
-    rules:
-      - apiGroups:
-          - ""
-        apiVersions:
-          - v1
-        operations:
-          - CREATE
-        resources:
-          - pods
-        scope: Namespaced
-    clientConfig:
-      service:
-        namespace: kube-system
-        name: config-operator
-        path: /compiler
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURZRENDQWtnQ0NRRGU5OWZTTjlxeFNUQU5CZ2txaGtpRzl3MEJBUXNGQURCeU1Rc3dDUVlEVlFRR0V3SlYKVXpFTE1Ba0dBMVVFQ0F3Q1EwRXhFakFRQmdOVkJBY01DVTFsYm14dlVHRnlhekVNTUFvR0ExVUVDZ3dEVDA1RwpNUlF3RWdZRFZRUUxEQXRGYm1kcGJtVmxjbWx1WnpFZU1Cd0dBMVVFQXd3VlkyRXViM0JsYm01bGRIZHZjbXRwCmJtY3ViM0puTUI0WERURTVNRFF4TVRBNU1EWXhNMW9YRFRJNU1EUXdPREE1TURZeE0xb3djakVMTUFrR0ExVUUKQmhNQ1ZWTXhDekFKQmdOVkJBZ01Ba05CTVJJd0VBWURWUVFIREFsTlpXNXNiMUJoY21zeEREQUtCZ05WQkFvTQpBMDlPUmpFVU1CSUdBMVVFQ3d3TFJXNW5hVzVsWlhKcGJtY3hIakFjQmdOVkJBTU1GV05oTG05d1pXNXVaWFIzCmIzSnJhVzVuTG05eVp6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQQURDQ0FRb0NnZ0VCQU1FZzdDWlIKWDhZK3N5S0hhUUNoNm1OSUwxRDA2NXRyd1g4Um51S00ya0J3U3UwMzR6ZWZRQVBsb1d1Z1NvSmdKbmY1ZmUwagpuVUQ4Z04zU204WFJoQ2t2ZjY3cHpmYWJndzRuOGVKbUhTY3lML3VneUV4QjZLYWh3em4zN2J0M29UM2dTcWhyCjZQVXpuV0o4ZnZmVnVDSFpaa3YvSFBScDRleUFjR3piSjRUdUIwZ280czZWRTBXVTVPQ3hDU2xBaUszbHZwVnIKM0RPTGRZTFZvQ2E1cThDdGwzd1hEcmZUTHc1L0JwZnJnOWZGOUVEMi9ZS0lkVjhLWjJraS9nd0VPUXFXY0twOAowTGtUbGZPV3NkR2pwNG9wUHVQVDduak1CR1hNSnpKOC9KMWUxYUp2SXNvQjduOFhyZnZrTmlXTDVVM2ZNNE43ClVaTjlqZmNsN1VMbW03Y0NBd0VBQVRBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQUloNkZqa1F1VGZYZGRtWlkKRllwb1Rlbi9WRDVpdTJYeGMxVGV4d21LZUgrWXRhS3AxWms4UFRnYkN0TUV3RWl5c2xmZUhUTXRPRGZucFVJawpEd3Z0QjRXMFBBbnJlUnNxaDlNQnpkVTZZWm16R3laOTJ2U1VCM3l1a2tIYVl6eWplS00wQXdnVmw5eVJORVp3ClkvT00wNzBoSlhYekpoM2VKcExsOWRsVWJNS3phb0FoMmJaeDZ5M1pKSVpGcy96cnBHZmc0bHZCQXZmTy81OWkKbXhKOWJRQlNOM1UySHdwNmlvT1F6UDBMcGxsZlh0eDlONUxhbldwQjBjdS9ITjl2QWd0cDNrUlRCWkQwTTFYSQpDdGl0OGJYVjdNeisxaUdxb3lVaGZDWWNDU2p1V1RnQXh6aXIraHJkbjd1TzY3SHY0bmRDb1NqNFNRYUdrYTNXCmVFZlZlQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-    admissionReviewVersions:
-      - v1beta1
-    sideEffects: None
-    failurePolicy: Ignore
-    timeoutSeconds: 5
-  - name: registry.config.onosproject.org
-    rules:
-      - apiGroups:
-          - ""
-        apiVersions:
-          - v1
-        operations:
-          - CREATE
-        resources:
-          - pods
-        scope: Namespaced
-    clientConfig:
-      service:
-        namespace: kube-system
-        name: config-operator
-        path: /registry
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURZRENDQWtnQ0NRRGU5OWZTTjlxeFNUQU5CZ2txaGtpRzl3MEJBUXNGQURCeU1Rc3dDUVlEVlFRR0V3SlYKVXpFTE1Ba0dBMVVFQ0F3Q1EwRXhFakFRQmdOVkJBY01DVTFsYm14dlVHRnlhekVNTUFvR0ExVUVDZ3dEVDA1RwpNUlF3RWdZRFZRUUxEQXRGYm1kcGJtVmxjbWx1WnpFZU1Cd0dBMVVFQXd3VlkyRXViM0JsYm01bGRIZHZjbXRwCmJtY3ViM0puTUI0WERURTVNRFF4TVRBNU1EWXhNMW9YRFRJNU1EUXdPREE1TURZeE0xb3djakVMTUFrR0ExVUUKQmhNQ1ZWTXhDekFKQmdOVkJBZ01Ba05CTVJJd0VBWURWUVFIREFsTlpXNXNiMUJoY21zeEREQUtCZ05WQkFvTQpBMDlPUmpFVU1CSUdBMVVFQ3d3TFJXNW5hVzVsWlhKcGJtY3hIakFjQmdOVkJBTU1GV05oTG05d1pXNXVaWFIzCmIzSnJhVzVuTG05eVp6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQQURDQ0FRb0NnZ0VCQU1FZzdDWlIKWDhZK3N5S0hhUUNoNm1OSUwxRDA2NXRyd1g4Um51S00ya0J3U3UwMzR6ZWZRQVBsb1d1Z1NvSmdKbmY1ZmUwagpuVUQ4Z04zU204WFJoQ2t2ZjY3cHpmYWJndzRuOGVKbUhTY3lML3VneUV4QjZLYWh3em4zN2J0M29UM2dTcWhyCjZQVXpuV0o4ZnZmVnVDSFpaa3YvSFBScDRleUFjR3piSjRUdUIwZ280czZWRTBXVTVPQ3hDU2xBaUszbHZwVnIKM0RPTGRZTFZvQ2E1cThDdGwzd1hEcmZUTHc1L0JwZnJnOWZGOUVEMi9ZS0lkVjhLWjJraS9nd0VPUXFXY0twOAowTGtUbGZPV3NkR2pwNG9wUHVQVDduak1CR1hNSnpKOC9KMWUxYUp2SXNvQjduOFhyZnZrTmlXTDVVM2ZNNE43ClVaTjlqZmNsN1VMbW03Y0NBd0VBQVRBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQUloNkZqa1F1VGZYZGRtWlkKRllwb1Rlbi9WRDVpdTJYeGMxVGV4d21LZUgrWXRhS3AxWms4UFRnYkN0TUV3RWl5c2xmZUhUTXRPRGZucFVJawpEd3Z0QjRXMFBBbnJlUnNxaDlNQnpkVTZZWm16R3laOTJ2U1VCM3l1a2tIYVl6eWplS00wQXdnVmw5eVJORVp3ClkvT00wNzBoSlhYekpoM2VKcExsOWRsVWJNS3phb0FoMmJaeDZ5M1pKSVpGcy96cnBHZmc0bHZCQXZmTy81OWkKbXhKOWJRQlNOM1UySHdwNmlvT1F6UDBMcGxsZlh0eDlONUxhbldwQjBjdS9ITjl2QWd0cDNrUlRCWkQwTTFYSQpDdGl0OGJYVjdNeisxaUdxb3lVaGZDWWNDU2p1V1RnQXh6aXIraHJkbjd1TzY3SHY0bmRDb1NqNFNRYUdrYTNXCmVFZlZlQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-    admissionReviewVersions:
-      - v1beta1
-    sideEffects: None
-    failurePolicy: Ignore
-    timeoutSeconds: 5
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -395,10 +345,17 @@ rules:
     verbs:
       - '*'
   - apiGroups:
+      - core.onosproject.org
       - config.onosproject.org
       - topo.onosproject.org
     resources:
       - '*'
+    verbs:
+      - '*'
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - mutatingwebhookconfigurations
     verbs:
       - '*'
 ---
@@ -486,6 +443,36 @@ spec:
         name: config-operator
     spec:
       serviceAccountName: onos-operator
+      initContainers:
+        - name: init-certs
+          image: onosproject/config-operator-init:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 0
+          env:
+            - name: CONTROLLER_NAME
+              value: config-operator
+            - name: CONTROLLER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config
+              mountPath: /etc/onos/config
+              readOnly: true
+            - name: plugins
+              mountPath: /etc/onos/plugins
+            - name: certs
+              mountPath: /etc/webhook/certs
       containers:
         - name: controller
           image: onosproject/config-operator:latest
@@ -527,28 +514,17 @@ spec:
               readOnly: true
             - name: plugins
               mountPath: /etc/onos/plugins
-            - name: cert
+            - name: certs
               mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
       volumes:
         - name: config
           configMap:
             name: onos-operator-config
-        - name: cert
-          secret:
-            defaultMode: 420
-            secretName: config-operator
+        - name: certs
+          emptyDir: {}
         - name: plugins
           emptyDir: {}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: config-operator
-  namespace: kube-system
-type: kubernetes.io/tls
-data:
-  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJekNDQWdzQ0ZFckJHenNYSG8xbDhibVpSbURrRitoMmJzZFZNQTBHQ1NxR1NJYjNEUUVCQ3dVQU1ISXgKQ3pBSkJnTlZCQVlUQWxWVE1Rc3dDUVlEVlFRSURBSkRRVEVTTUJBR0ExVUVCd3dKVFdWdWJHOVFZWEpyTVF3dwpDZ1lEVlFRS0RBTlBUa1l4RkRBU0JnTlZCQXNNQzBWdVoybHVaV1Z5YVc1bk1SNHdIQVlEVlFRRERCVmpZUzV2CmNHVnVibVYwZDI5eWEybHVaeTV2Y21jd0hoY05NakF4TWpBM01EYzFOekV6V2hjTk16QXhNakExTURjMU56RXoKV2pBcU1TZ3dKZ1lEVlFRRERCOWpiMjVtYVdjdGIzQmxjbUYwYjNJdWEzVmlaUzF6ZVhOMFpXMHVjM1pqTUlJQgpJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBeHA5eWdMRFhiZkpIam92LzUxdWl5SXNPCndES2RLd0dEZEVGdmFyK3U5dmNvNUNwZkVYbXlIUEJOUFZtVG14Uy9YeUpoQjNmM3hWSjFwS3AvN0ttVUlNNWgKZHlLQUduUnc1THZXS1dNck9rck9EcEZ5ek04dkZPRDh3eFJ4NHVUWmsyeWdVODFHN1hsbkRhZTUvcENldm1RdwppUFV2Z29ERzU4b0ZJMjFpRnBSSU1ER0hFWE1MK1ZvTjh4UWF2S21rcjlpU1RvWjVMZUY3TjloSU1lc2V3NjlYCnFMazRRRi90ZGdYSE93dnk0blJ4ZjcraW5ScVNPb3Fyc0RKQ1NaeENKT1BLSkVSejVKYkdLR1ZpZGtXeXpkUysKbXp3Z1NNSmZwN09xWmlwUk0yRXdSWG1tajlCQzYyUDdoM2pZTlZFT0hKSXRPTDRXekRiNEZDZENVU1BpOVFJRApBUUFCTUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFDMXRwb25HbXlXRFlHd2MxOXJVdjYyTkpNczUzOWo2ZWJaCkJ4Rkt0MGMxVitYd1JTbXhIdkh6Tmg3OHZhK2ZZNkFwRzZYWUMwY1BxTDN6b0tFQ25HaERJVW9Tb1crWEtIS3oKN1dwdWRLV3NtS0VEc1JWYmpLc0hwMS8zc3JGKzdJOTYzUVZ2bWtYWFA5RjltajM3eG93WU9xZ0ErY1hQNVVSUAo5bDRpT3VDNmM0QmU4T3RBRHNHeWJBd1Z3VjdzQ0tPNWFWMVJoK1BpbTRudlZnY3lZOEZpQ2NldU1uNnV4Wlk2CkptelR4aFhPUWZKampJMzZkZVNqUGdVUTlEMVNHSm5WbFJMSGYvdFBCQ3J5S3lEVFI4NlFHZjlmL2FyWVJEL2EKeFJGc1FrZm9Sb1ZNemUrVTdOeVkxOVRJRStKMFc4dC9LK1I1MW5IT0ZTaUhkeDVnZG51NQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  tls.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb2dJQkFBS0NBUUVBeHA5eWdMRFhiZkpIam92LzUxdWl5SXNPd0RLZEt3R0RkRUZ2YXIrdTl2Y281Q3BmCkVYbXlIUEJOUFZtVG14Uy9YeUpoQjNmM3hWSjFwS3AvN0ttVUlNNWhkeUtBR25SdzVMdldLV01yT2tyT0RwRnkKek04dkZPRDh3eFJ4NHVUWmsyeWdVODFHN1hsbkRhZTUvcENldm1Rd2lQVXZnb0RHNThvRkkyMWlGcFJJTURHSApFWE1MK1ZvTjh4UWF2S21rcjlpU1RvWjVMZUY3TjloSU1lc2V3NjlYcUxrNFFGL3RkZ1hIT3d2eTRuUnhmNytpCm5ScVNPb3Fyc0RKQ1NaeENKT1BLSkVSejVKYkdLR1ZpZGtXeXpkUyttendnU01KZnA3T3FaaXBSTTJFd1JYbW0KajlCQzYyUDdoM2pZTlZFT0hKSXRPTDRXekRiNEZDZENVU1BpOVFJREFRQUJBb0lCQUU5M0EyeVJVOTlkQzF2dwpqeFdWQisrTUV2NjZRVDh2ZjlSSFNiZy9zRlNHVmduVEdlMzM3bGE5bldscUtTL21nUm9pdXdjdDdDYzU4bTlLCjk1dEx6VVBDemlQSDNkQzN2V01GODR6amJDd0tPWjZDZXBlT1hKdlIxODZFbzN2UGEyMGNESmo2aStIK3JFZysKVHArV1pLeHZrU3Q2VE9POWVkYktjSHZZQzJKVWc2R1hhelo1cEc3TktiOXhBMXY2LzFqNDc3UW4wdWdvUEdMZQpRZTdDUVlOYjBNc1N4Y3Jsa2pJTUZwWHFzbkljMk13c2tpY21MeWpGWHVBYnhKeHh4eUxFWTVsdHR6dnB0L2k4ClF1Mm8yWWR4bFRkaE0wczhNeVVJTWpldkVOc2lDL013REJMZHlTcDFUL0ZOYWUxYnR4aEVYZEVjcFJ2OWcxdHQKN2xzR0pSRUNnWUVBK1gvRUdVYTNNWUtNbGI4NTlZQ0kwdnkvVHR1WlJvbGx5UURDQXJMVS8wYmlJbUMzRktJMQpoTmE1KzdHNE93dzN4bVF2QXRzZUZZRjJGUnJTVy9YS2NXa0ZIWi9Md2JiRG5kMUZUdXY3MXd3K1dZVW9JK0VICkhJa09KSjdyRGFoYXZNYjc0aVllUTMzYzZhN0xCOElsQ0lkVllpSVU2d0paWGxldE9mZ0ZaTk1DZ1lFQXk4eFMKUjBRYkUveU1LbWFZZDlNZ3EyTkU2MThEZDhUQUV4NEhDRlBrQTR4TENnVW00WEdjYjZmZG5mck9Uam44KzFDZwpUUlUxRjlzMVpheGFDTmxtaWFabENVRGJHeVFEVC9MU1VxSUpIVk5FcGVnZ2RRb0xwc1llQXhDeUNlcXQ5cUE3Cjdkd2xGdzJnSG5sem9ZN09aNUhzVWtlU1YzdmpUdzQwVjdKa1hCY0NnWUJvZ1g3blEzcWFiMTlwbmdhdDhaL2UKR0dZZHB0Z0Y5cWsrejJWMGNlbkwzNm42MGwzOWM1Qk5Tdy91QUZ2MXg4RlpCVCszeDRaTFpjWExRMGZYb3hXZgorV2hlSnovV3JUSTAzcWtZVExwWk1sU3ZkSm9DcFZBd1FLdys1SjM2UTRsMlJ6YmNYREVTL2haWmY1Q2xlRW5BCno4Y1E2c3V1UUhha2tMOExaL3NDWndLQmdCOFBNS3J6MGp5bGpLY1pvN3IvVGtkUWhieHBhcG5pUG5PcmE5NzEKQ2hjUVZvOWNZYVNTTUFsRVNCNC9qeG1VOU4xSVdHWG5DWVJ0UUNJU3RsWUs2L21taGxkMnJ1M2YrekZBREpYVApaQmc0RElwTWFrWHNGZ0tBeHlvb2JUbmRyazJiOWdZMk91RGNqcjZXTyswdlduMm1XNkhlam9zT3NvSGw1RXhKClA4cFpBb0dBVlcwUEJrSWxOVmhBN0p5c3dQWlg3bTdOb2Nzd1ZQRzYyMjR4SDl1OFNKM09YOUQrZWFQU2xMdHcKRHlyNUU1blJZM1hwVjhzbzdwcVh5ai9qdnFMOGJXK3NraWdLclFBUnBrVnpzc3BtWVRtZzE5VzAyWUZsZE5xOApzVGRWVzFwN2NMTmxMUk9wMm54MDJwVXk1SEdQOGhYOXUwdVFKVzdpYkNGS1pFc3NRY0U9Ci0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
 ---
 apiVersion: v1
 kind: Service

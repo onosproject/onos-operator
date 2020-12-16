@@ -7,6 +7,7 @@ ONOS_OPERATOR_VERSION := latest
 
 build: # @HELP build the Go binaries and run all validations (default)
 build:
+	go build -o build/_output/admission-init ./cmd/admission-init
 	go build -o build/_output/core-operator ./cmd/core-operator
 	go build -o build/_output/config-operator ./cmd/config-operator
 	go build -o build/_output/topo-operator ./cmd/topo-operator
@@ -33,6 +34,8 @@ license_check: # @HELP examine and ensure license headers exist
 	./../build-tools/licensing/boilerplate.py -v --rootdir=${CURDIR}
 
 images: # @HELP build Docker images
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/admission-init/_output/bin/admission-init ./cmd/admission-init
+	docker build . -f build/admission-init/Dockerfile -t onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/core-operator/_output/bin/core-operator ./cmd/core-operator
 	docker build . -f build/core-operator/Dockerfile -t onosproject/core-operator:${ONOS_OPERATOR_VERSION}
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/config-operator/_output/bin/config-operator ./cmd/config-operator
@@ -43,6 +46,7 @@ images: # @HELP build Docker images
 kind: # @HELP build Docker images and add them to the currently configured kind cluster
 kind: images
 	@if [ "`kind get clusters`" = '' ]; then echo "no kind cluster found" && exit 1; fi
+	kind load docker-image onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
 	kind load docker-image onosproject/core-operator:${ONOS_OPERATOR_VERSION}
 	kind load docker-image onosproject/config-operator:${ONOS_OPERATOR_VERSION}
 	kind load docker-image onosproject/topo-operator:${ONOS_OPERATOR_VERSION}
