@@ -21,6 +21,7 @@ import (
 	configadmission "github.com/onosproject/onos-operator/pkg/admission/config"
 	configapi "github.com/onosproject/onos-operator/pkg/apis/config"
 	configctrl "github.com/onosproject/onos-operator/pkg/controller/config"
+	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -62,8 +63,14 @@ func main() {
 		_ = r.Unset()
 	}()
 
+	opts := manager.Options{}
+	scope := k8s.GetScope()
+	if scope == k8s.NamespaceScope {
+		opts.Namespace = k8s.GetNamespace()
+	}
+
 	// Create a new Cmd to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, manager.Options{})
+	mgr, err := manager.New(cfg, opts)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

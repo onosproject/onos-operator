@@ -20,6 +20,7 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	coreapi "github.com/onosproject/onos-operator/pkg/apis/core"
 	corectrl "github.com/onosproject/onos-operator/pkg/controller/core"
+	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -38,11 +39,6 @@ func printVersion() {
 }
 
 func main() {
-	var namespace string
-	if len(os.Args) > 1 {
-		namespace = os.Args[1]
-	}
-
 	printVersion()
 
 	// Get a config to talk to the apiserver
@@ -65,8 +61,14 @@ func main() {
 		_ = r.Unset()
 	}()
 
+	opts := manager.Options{}
+	scope := k8s.GetScope()
+	if scope == k8s.NamespaceScope {
+		opts.Namespace = k8s.GetNamespace()
+	}
+
 	// Create a new Cmd to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, manager.Options{Namespace: namespace})
+	mgr, err := manager.New(cfg, opts)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
