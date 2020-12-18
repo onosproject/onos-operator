@@ -182,7 +182,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 
 	// Install the model to each registry
 	for _, pod := range pods.Items {
-		if pod.Annotations[configadmission.InjectRegistryAnnotation] == "true" {
+		if pod.Annotations[configadmission.RegistryInjectAnnotation] != "" {
 			var index int
 			var status *v1beta1.RegistryStatus
 			for i, reg := range model.Status.RegistryStatuses {
@@ -379,7 +379,7 @@ func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, er
 
 	// Install the model to each registry
 	for _, pod := range pods.Items {
-		if pod.Annotations[configadmission.InjectRegistryAnnotation] == "true" {
+		if pod.Annotations[configadmission.RegistryInjectAnnotation] != "" {
 			log.Debugf("Deleting Model '%s/%s' from Pod '%s'", model.Namespace, model.Name, pod.Name)
 			conn, err := grpc.ConnectAddress(fmt.Sprintf("%s:5151", pod.Status.PodIP))
 			if err != nil {
@@ -412,7 +412,7 @@ type modelMapper struct {
 
 func (m *modelMapper) Map(object handler.MapObject) []reconcile.Request {
 	if _, ok := object.Object.(*v1beta1.Model); !ok {
-		if pod, ok := object.Object.(*corev1.Pod); !ok || pod.Annotations[configadmission.InjectRegistryAnnotation] != "true" {
+		if pod, ok := object.Object.(*corev1.Pod); !ok || pod.Annotations[configadmission.RegistryInjectAnnotation] == "" {
 			return []reconcile.Request{}
 		}
 	}

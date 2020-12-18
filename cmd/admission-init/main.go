@@ -23,6 +23,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
+	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,14 +43,8 @@ func printVersion() {
 }
 
 func main() {
-	namespace := os.Getenv("CONTROLLER_NAMESPACE")
-	if namespace == "" {
-		log.Panic("No CONTROLLER_NAMESPACE found")
-	}
-	service := os.Getenv("CONTROLLER_NAME")
-	if service == "" {
-		log.Panic("No CONTROLLER_NAME found")
-	}
+	namespace := k8s.GetNamespace()
+	service := k8s.GetName("onos-operator")
 
 	printVersion()
 

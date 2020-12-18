@@ -18,7 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -26,14 +28,10 @@ import (
 )
 
 const (
-	// InjectRegistryAnnotation is an annotation indicating the model to inject the registry into a pod
-	InjectRegistryAnnotation = "config.onosproject.org/inject-registry"
+	// RegistryInjectAnnotation is an annotation indicating the model to inject the registry into a pod
+	RegistryInjectAnnotation = "registry.config.onosproject.org/inject"
 	// RegistryVersionAnnotation is an annotation indicating the path at which to mount the registry
-	RegistryPathAnnotation = "config.onosproject.org/registry-path"
-)
-
-const (
-	registryVolume = "registry"
+	RegistryPathAnnotation = "registry.config.onosproject.org/path"
 )
 
 const (
@@ -61,14 +59,14 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	// If the pod is annotated with the InjectRegistryAnnotation, inject the module registry
-	modelInject, ok := pod.Annotations[InjectRegistryAnnotation]
-	if !ok || modelInject != "true" {
-		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", InjectRegistryAnnotation))
+	// If the pod is annotated with the RegistryInjectAnnotation, inject the module registry
+	registryInject, ok := pod.Annotations[RegistryInjectAnnotation]
+	if !ok {
+		return admission.Allowed(fmt.Sprintf("'%s' annotation not found", RegistryInjectAnnotation))
 	}
-	log.Infof("Injecting registry sidecar into Pod '%s/%s'", pod.Name, pod.Namespace)
+	log.Infof("Injecting registry '%s' sidecar into Pod '%s/%s'", registryInject, pod.Name, pod.Namespace)
 
-	// If the pod is annotated with InjectModelAnnotation, ensure RegistryLanguageAnnotation
+	// If the pod is annotated with ModelInjectAnnotation, ensure RegistryLanguageAnnotation
 	// and RegistryVersionAnnotation are present as well
 	compilerLanguage, ok := pod.Annotations[CompilerLanguageAnnotation]
 	if !ok {
@@ -88,21 +86,39 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		registryPath = defaultRegistryPath
 	}
 
+	// Load the registry to inject
+	registry := &v1beta1.ModelRegistry{}
+	registryName := types.NamespacedName{
+		Namespace: request.Namespace,
+		Name:      registryInject,
+	}
+	if err := i.client.Get(ctx, registryName, registry); err != nil {
+		log.Errorf("Failed to inject registry into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
+		return admission.Denied(err.Error())
+	}
+
 	// Add a registry volume to the pod
-	if !hasRegistryVolume(pod) {
-		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-			Name: registryVolume,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
+	if !hasVolume(pod, registry.Spec.Volume.Name) {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, registry.Spec.Volume)
 	}
 
 	// Mount the registry volume to existing containers
 	for i, container := range pod.Spec.Containers {
-		if !hasRegistryVolumeMount(container) {
+		if !hasVolumeMount(container, registry.Spec.Volume.Name) {
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "CONFIG_MODEL_REGISTRY",
+				Value: registryPath,
+			})
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "CONFIG_MODULE_TARGET",
+				Value: goModTarget,
+			})
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "CONFIG_MODULE_REPLACE",
+				Value: goModReplace,
+			})
 			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-				Name:      registryVolume,
+				Name:      registry.Spec.Volume.Name,
 				MountPath: registryPath,
 			})
 			pod.Spec.Containers[i] = container
@@ -138,12 +154,12 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 
 	// Add the registry init container
 	container := corev1.Container{
-		Name:  fmt.Sprintf("model-registry"),
+		Name:  "model-registry",
 		Image: image,
 		Args:  args,
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      registryVolume,
+				Name:      registry.Spec.Volume.Name,
 				MountPath: registryPath,
 			},
 		},
@@ -161,18 +177,18 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshaledPod)
 }
 
-func hasRegistryVolume(pod *corev1.Pod) bool {
+func hasVolume(pod *corev1.Pod, name string) bool {
 	for _, volume := range pod.Spec.Volumes {
-		if volume.Name == registryVolume {
+		if volume.Name == name {
 			return true
 		}
 	}
 	return false
 }
 
-func hasRegistryVolumeMount(container corev1.Container) bool {
+func hasVolumeMount(container corev1.Container, name string) bool {
 	for _, mount := range container.VolumeMounts {
-		if mount.Name == registryVolume {
+		if mount.Name == name {
 			return true
 		}
 	}

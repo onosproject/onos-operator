@@ -32,6 +32,10 @@ func (c *FakeConfigV1beta1) Models(namespace string) v1beta1.ModelInterface {
 	return &FakeModels{c, namespace}
 }
 
+func (c *FakeConfigV1beta1) ModelRegistries(namespace string) v1beta1.ModelRegistryInterface {
+	return &FakeModelRegistries{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeConfigV1beta1) RESTClient() rest.Interface {

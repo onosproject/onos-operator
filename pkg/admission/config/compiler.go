@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	// InjectModelAnnotation is an annotation indicating the model to inject a model into a pod
-	InjectModelAnnotation = "config.onosproject.org/inject-model"
+	// ModelInjectAnnotation is an annotation indicating the model to inject a model into a pod
+	ModelInjectAnnotation = "model.config.onosproject.org/inject"
 	// CompilerLanguageAnnotation is an annotation indicating which compiler language to use to compile a model
 	CompilerLanguageAnnotation = "compiler.config.onosproject.org/language"
 	// CompilerVersionAnnotation is an annotation indicating which compiler version to use to compile a model
@@ -40,7 +40,7 @@ const (
 	// CompilerGolangBuildVersionAnnotation is an annotation indicating the onosproject/go-build version for which to compile a model
 	CompilerGolangBuildVersionAnnotation = "compiler.config.onosproject.org/golang-build-version"
 	// CompilerGoModTargetAnnotation is an annotation indicating the Go module for which to compile a model
-	CompilerGoModTargetAnnotation  = "compiler.config.onosproject.org/go-mod-target"
+	CompilerGoModTargetAnnotation = "compiler.config.onosproject.org/go-mod-target"
 	// CompilerGoModReplaceAnnotation is an annotation indicating a replacement for the target Go module
 	CompilerGoModReplaceAnnotation = "compiler.config.onosproject.org/go-mod-replace"
 )
@@ -71,7 +71,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	// If the pod is annotated with InjectModelAnnotation, ensure CompilerLanguageAnnotation
+	// If the pod is annotated with ModelInjectAnnotation, ensure CompilerLanguageAnnotation
 	// and CompilerVersionAnnotation are present as well
 	compilerLanguage, ok := pod.Annotations[CompilerLanguageAnnotation]
 	if !ok {
@@ -86,6 +86,29 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 	golangBuildVersion := pod.Annotations[CompilerGolangBuildVersionAnnotation]
 	goModTarget := pod.Annotations[CompilerGoModTargetAnnotation]
 	goModReplace := pod.Annotations[CompilerGoModReplaceAnnotation]
+
+	var registryVolume corev1.Volume
+	registryInject, ok := pod.Annotations[RegistryInjectAnnotation]
+	if ok {
+		registry := &configv1beta1.ModelRegistry{}
+		registryName := types.NamespacedName{
+			Namespace: request.Namespace,
+			Name:      registryInject,
+		}
+		if err := i.client.Get(ctx, registryName, registry); err != nil {
+			log.Errorf("Failed to inject registry into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
+			return admission.Denied(err.Error())
+		}
+		registryVolume = registry.Spec.Volume
+	} else {
+		registryVolume = corev1.Volume{
+			Name: "model-registry",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}
+	}
+
 	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
 	if !ok {
 		registryPath = defaultRegistryPath
@@ -93,7 +116,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 
 	// Load the models to be compiled
 	var models []configv1beta1.Model
-	if registryInject, ok := pod.Annotations[InjectRegistryAnnotation]; ok && registryInject == "true" {
+	if registryInject, ok := pod.Annotations[RegistryInjectAnnotation]; ok && registryInject != "" {
 		// Load existing models via init containers
 		modelList := &configv1beta1.ModelList{}
 		modelListOpts := &client.ListOptions{
@@ -109,7 +132,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 				models = append(models, model)
 			}
 		}
-	} else if modelInject, ok := pod.Annotations[InjectModelAnnotation]; ok && modelInject != "" {
+	} else if modelInject, ok := pod.Annotations[ModelInjectAnnotation]; ok && modelInject != "" {
 		model := &configv1beta1.Model{}
 		modelName := types.NamespacedName{
 			Name:      modelInject,
@@ -149,20 +172,27 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 		}
 
 		// Add a registry volume to the pod
-		if !hasRegistryVolume(pod) {
-			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-				Name: registryVolume,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			})
+		if !hasVolume(pod, registryVolume.Name) {
+			pod.Spec.Volumes = append(pod.Spec.Volumes, registryVolume)
 		}
 
 		// Mount the registry volume to existing containers
 		for i, container := range pod.Spec.Containers {
-			if !hasRegistryVolumeMount(container) {
+			if !hasVolumeMount(container, registryVolume.Name) {
+				container.Env = append(container.Env, corev1.EnvVar{
+					Name:  "CONFIG_MODEL_REGISTRY",
+					Value: registryPath,
+				})
+				container.Env = append(container.Env, corev1.EnvVar{
+					Name:  "CONFIG_MODULE_TARGET",
+					Value: goModTarget,
+				})
+				container.Env = append(container.Env, corev1.EnvVar{
+					Name:  "CONFIG_MODULE_REPLACE",
+					Value: goModReplace,
+				})
 				container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-					Name:      registryVolume,
+					Name:      registryVolume.Name,
 					MountPath: registryPath,
 				})
 				pod.Spec.Containers[i] = container
@@ -228,7 +258,7 @@ func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request
 					MountPath: modelPath,
 				},
 				{
-					Name:      registryVolume,
+					Name:      registryVolume.Name,
 					MountPath: registryPath,
 				},
 			},

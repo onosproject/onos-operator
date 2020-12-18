@@ -27,6 +27,7 @@ import (
 type ConfigV1beta1Interface interface {
 	RESTClient() rest.Interface
 	ModelsGetter
+	ModelRegistriesGetter
 }
 
 // ConfigV1beta1Client is used to interact with features provided by the config.onosproject.org group.
@@ -36,6 +37,10 @@ type ConfigV1beta1Client struct {
 
 func (c *ConfigV1beta1Client) Models(namespace string) ModelInterface {
 	return newModels(c, namespace)
+}
+
+func (c *ConfigV1beta1Client) ModelRegistries(namespace string) ModelRegistryInterface {
+	return newModelRegistries(c, namespace)
 }
 
 // NewForConfig creates a new ConfigV1beta1Client for the given config.

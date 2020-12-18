@@ -39,6 +39,7 @@ type ModelsGetter interface {
 type ModelInterface interface {
 	Create(*v1beta1.Model) (*v1beta1.Model, error)
 	Update(*v1beta1.Model) (*v1beta1.Model, error)
+	UpdateStatus(*v1beta1.Model) (*v1beta1.Model, error)
 	Delete(name string, options *v1.DeleteOptions) error
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.Model, error)
@@ -126,6 +127,22 @@ func (c *models) Update(model *v1beta1.Model) (result *v1beta1.Model, err error)
 		Namespace(c.ns).
 		Resource("models").
 		Name(model.Name).
+		Body(model).
+		Do().
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+
+func (c *models) UpdateStatus(model *v1beta1.Model) (result *v1beta1.Model, err error) {
+	result = &v1beta1.Model{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("models").
+		Name(model.Name).
+		SubResource("status").
 		Body(model).
 		Do().
 		Into(result)
