@@ -104,9 +104,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 	if entity.DeletionTimestamp == nil {
 		return r.reconcileCreate(entity)
-	} else {
-		return r.reconcileDelete(entity)
 	}
+	return r.reconcileDelete(entity)
 }
 
 func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, error) {

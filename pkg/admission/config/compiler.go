@@ -57,11 +57,13 @@ type CompilerInjector struct {
 	decoder *admission.Decoder
 }
 
+// InjectDecoder :
 func (i *CompilerInjector) InjectDecoder(decoder *admission.Decoder) error {
 	i.decoder = decoder
 	return nil
 }
 
+// Handle :
 func (i *CompilerInjector) Handle(ctx context.Context, request admission.Request) admission.Response {
 	log.Infof("Received admission request for Pod '%s/%s'", request.Name, request.Namespace)
 

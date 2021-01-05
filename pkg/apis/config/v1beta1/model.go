@@ -59,16 +59,21 @@ type RegistryStatus struct {
 type ModelPhase string
 
 const (
-	ModelPending    ModelPhase = "Pending"
+	// ModelPending pending
+	ModelPending ModelPhase = "Pending"
+
+	// ModelInstalling installing
 	ModelInstalling ModelPhase = "Installing"
-	ModelInstalled  ModelPhase = "Installed"
+
+	// ModelInstalled installed
+	ModelInstalled ModelPhase = "Installed"
 )
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 
 // Model is the Schema for the Model API
-// +k8s:openapi-gen=true
 type Model struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
