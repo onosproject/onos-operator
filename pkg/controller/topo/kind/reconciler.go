@@ -109,9 +109,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 	if kind.DeletionTimestamp == nil {
 		return r.reconcileCreate(kind)
-	} else {
-		return r.reconcileDelete(kind)
 	}
+	return r.reconcileDelete(kind)
 }
 
 func (r *Reconciler) reconcileCreate(kind *v1beta1.Kind) (reconcile.Result, error) {

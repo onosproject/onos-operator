@@ -30,7 +30,7 @@ import (
 const (
 	// RegistryInjectAnnotation is an annotation indicating the model to inject the registry into a pod
 	RegistryInjectAnnotation = "registry.config.onosproject.org/inject"
-	// RegistryVersionAnnotation is an annotation indicating the path at which to mount the registry
+	// RegistryPathAnnotation is an annotation indicating the path at which to mount the registry
 	RegistryPathAnnotation = "registry.config.onosproject.org/path"
 )
 
@@ -44,11 +44,13 @@ type RegistryInjector struct {
 	decoder *admission.Decoder
 }
 
+// InjectDecoder :
 func (i *RegistryInjector) InjectDecoder(decoder *admission.Decoder) error {
 	i.decoder = decoder
 	return nil
 }
 
+// Handle :
 func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request) admission.Response {
 	log.Infof("Received admission request for Pod '%s/%s'", request.Name, request.Namespace)
 

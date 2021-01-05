@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package v1beta3 contains API Schema definitions for the cloud v1beta3 API group
 // +k8s:deepcopy-gen=package,register
 // +groupName=topo.onosproject.org
+
+// Package v1beta1 contains API Schema definitions for the cloud v1beta3 API group
 package v1beta1

@@ -14,9 +14,10 @@
 
 // NOTE: Boilerplate only.  Ignore this file.
 
-// Package v1beta3 contains API Schema definitions for the k8s v1beta3 API group
 // +k8s:deepcopy-gen=package,register
 // +groupName=core.onosproject.org
+
+// Package v1beta1 contains API Schema definitions for the k8s v1beta3 API group
 package v1beta1
 
 import (

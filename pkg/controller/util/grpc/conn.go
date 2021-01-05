@@ -52,9 +52,11 @@ func ConnectService(c client.Client, namespace, name string) (*grpc.ClientConn, 
 
 	// Find the first matching ClusterIP service
 	var service *corev1.Service
+	var foundService corev1.Service
 	for _, s := range services.Items {
 		if s.Spec.Type == corev1.ServiceTypeClusterIP && s.Spec.ClusterIP != corev1.ClusterIPNone {
-			service = &s
+			foundService = s
+			service = &foundService
 			break
 		}
 	}

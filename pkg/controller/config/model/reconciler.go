@@ -112,9 +112,8 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 	if model.DeletionTimestamp == nil {
 		return r.reconcileCreate(model)
-	} else {
-		return r.reconcileDelete(model)
 	}
+	return r.reconcileDelete(model)
 }
 
 func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, error) {
@@ -185,10 +184,12 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		if pod.Annotations[configadmission.RegistryInjectAnnotation] != "" {
 			var index int
 			var status *v1beta1.RegistryStatus
+			var foundStatus v1beta1.RegistryStatus
 			for i, reg := range model.Status.RegistryStatuses {
 				if reg.PodName == pod.Name {
 					index = i
-					status = &reg
+					foundStatus = reg
+					status = &foundStatus
 					break
 				}
 			}
