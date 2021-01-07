@@ -54,9 +54,12 @@ kind: images
 all: build images
 
 publish: # @HELP publish version on github and dockerhub
-	./../build-tools/publish-version ${VERSION} onosproject/core-operator
-	./../build-tools/publish-version ${VERSION} onosproject/config-operator
-	./../build-tools/publish-version ${VERSION} onosproject/topo-operator
+	./../build-tools/publish-version ${VERSION} onosproject/core-operator onosproject/config-operator onosproject/topo-operator
+
+push: # @HELP push latest versions of the images to docker hub
+	docker push onosproject/core-operator:latest
+	docker push onosproject/config-operator:latest
+	docker push onosproject/topo-operator:latest
 
 bumponosdeps: # @HELP update "onosproject" go dependencies and push patch to git.
 	./../build-tools/bump-onos-deps ${VERSION}
