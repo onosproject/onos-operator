@@ -17,6 +17,10 @@ test: build deps license_check linters
 	go test github.com/onosproject/onos-operator/pkg/...
 	go test github.com/onosproject/onos-operator/cmd/...
 
+jenkins-test:  # @HELP run the unit tests and source code validation producing a junit style report for Jenkins
+jenkins-test: build-tools deps license_check linters
+	TEST_PACKAGES=github.com/onosproject/onos-operator/... ./../build-tools/build/jenkins/make-unit
+
 coverage: # @HELP generate unit test coverage data
 coverage: build deps linters license_check
 	./../build-tools/build/coveralls/coveralls-coverage onos-operator
