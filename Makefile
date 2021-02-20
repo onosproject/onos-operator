@@ -1,4 +1,4 @@
-export CGO_ENABLED=0
+export CGO_ENABLED=1
 export GO111MODULE=on
 
 .PHONY: build
@@ -19,7 +19,7 @@ test: build deps license_check linters
 
 jenkins-test:  # @HELP run the unit tests and source code validation producing a junit style report for Jenkins
 jenkins-test: build-tools deps license_check linters
-	TEST_PACKAGES=github.com/onosproject/onos-operator/... ./../build-tools/build/jenkins/make-unit
+	TEST_PACKAGES=github.com/onosproject/onos-operator/pkg/... ./../build-tools/build/jenkins/make-unit
 
 coverage: # @HELP generate unit test coverage data
 coverage: build deps linters license_check
@@ -43,7 +43,7 @@ golang-ci: # @HELP install golang-ci if not present
 	golangci-lint --version || curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b `go env GOPATH`/bin v1.36.0
 
 license_check: build-tools # @HELP examine and ensure license headers exist
-	./../build-tools/licensing/boilerplate.py -v --rootdir=${CURDIR} --boilerplate LicenseRef-ONF-Member-1.0
+	./../build-tools/licensing/boilerplate.py -v --rootdir=${CURDIR}
 
 images: # @HELP build Docker images
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/admission-init/_output/bin/admission-init ./cmd/admission-init
