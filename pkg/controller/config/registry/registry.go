@@ -96,10 +96,10 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	}
 
 	// Skip registry injection if the registry has already been injected
-	injectedRegistry, ok := pod.Annotations[RegistryInjectStatusAnnotation]
-	if ok && injectedRegistry == RegistryInjectStatusInjected {
-		log.Debugf("Skipping registry injection for Pod '%s/%s': '%s' is '%s'", pod.Name, pod.Namespace, RegistryInjectStatusAnnotation, injectedRegistry)
-		return admission.Allowed(fmt.Sprintf("'%s' annotation is '%s'", RegistryInjectStatusAnnotation, injectedRegistry))
+	injectStatus, ok := pod.Annotations[RegistryInjectStatusAnnotation]
+	if ok && injectStatus == RegistryInjectStatusInjected {
+		log.Debugf("Skipping registry injection for Pod '%s/%s': '%s' is '%s'", pod.Name, pod.Namespace, RegistryInjectStatusAnnotation, injectStatus)
+		return admission.Allowed(fmt.Sprintf("'%s' annotation is '%s'", RegistryInjectStatusAnnotation, injectStatus))
 	}
 
 	// Get the model API version
@@ -107,6 +107,14 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	if !ok {
 		log.Errorf("Failed to inject registry into Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, ModelAPIVersionAnnotation)
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", ModelAPIVersionAnnotation))
+	}
+
+	golangBuildVersion := pod.Annotations[GolangBuildVersionAnnotation]
+	goModTarget := pod.Annotations[GoModTargetAnnotation]
+	goModReplace := pod.Annotations[GoModReplaceAnnotation]
+	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
+	if !ok {
+		registryPath = defaultRegistryPath
 	}
 
 	// Get the registry namespace and name
@@ -120,15 +128,7 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", RegistryNameAnnotation))
 	}
 
-	log.Infof("Injecting registry '%s' sidecar into Pod '%s/%s'", injectRegistry, pod.Name, pod.Namespace)
-
-	golangBuildVersion := pod.Annotations[GolangBuildVersionAnnotation]
-	goModTarget := pod.Annotations[GoModTargetAnnotation]
-	goModReplace := pod.Annotations[GoModReplaceAnnotation]
-	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
-	if !ok {
-		registryPath = defaultRegistryPath
-	}
+	log.Infof("Injecting registry '%s/%s' into Pod '%s/%s'", registryName, registryNamespace, pod.Name, pod.Namespace)
 
 	// Load the registry to inject
 	registry := &configv1beta1.ModelRegistry{}
@@ -171,8 +171,10 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		if err != nil {
 			log.Errorf("Failed to inject model '%s' into Pod '%s/%s': %s", model.Name, pod.Name, pod.Namespace, err)
 			if errors.IsNotFound(err) {
+				log.Warnf("Failed to inject model '%s/%s' into Pod '%s/%s': %s", model.Name, model.Namespace, pod.Name, pod.Namespace, err)
 				return admission.Denied(fmt.Sprintf("Model '%s' not initialized", model.Name))
 			}
+			log.Errorf("Failed to inject model '%s/%s' into Pod '%s/%s': %s", model.Name, model.Namespace, pod.Name, pod.Namespace, err)
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
 
@@ -339,9 +341,11 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	// Marshal the pod and return a patch response
 	marshaledPod, err := json.Marshal(pod)
 	if err != nil {
-		log.Errorf("Failed to inject registry into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
+		log.Errorf("Failed to inject registry '%s/%s' into Pod '%s/%s': %s", registryName, registryNamespace, pod.Name, pod.Namespace, err)
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
+
+	log.Infof("Completed injecting registry '%s/%s' into Pod '%s/%s'", registryName, registryNamespace, pod.Name, pod.Namespace)
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshaledPod)
 }
 
