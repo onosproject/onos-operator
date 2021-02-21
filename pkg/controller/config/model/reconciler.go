@@ -412,10 +412,9 @@ type modelMapper struct {
 }
 
 func (m *modelMapper) Map(object handler.MapObject) []reconcile.Request {
-	if _, ok := object.Object.(*v1beta1.Model); !ok {
-		if pod, ok := object.Object.(*corev1.Pod); !ok || pod.Annotations[registry.RegistryInjectStatusAnnotation] != registry.RegistryInjectStatusInjected {
-			return []reconcile.Request{}
-		}
+	if pod, ok := object.Object.(*corev1.Pod); ok &&
+		pod.Annotations[registry.RegistryInjectStatusAnnotation] != registry.RegistryInjectStatusInjected {
+		return []reconcile.Request{}
 	}
 
 	models := &v1beta1.ModelList{}
