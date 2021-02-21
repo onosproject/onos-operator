@@ -17,7 +17,7 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/onosproject/onos-config-model-go/api/onos/configmodel"
+	"github.com/onosproject/onos-config-model/api/onos/configmodel"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	configadmission "github.com/onosproject/onos-operator/pkg/admission/config"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
