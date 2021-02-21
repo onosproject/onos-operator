@@ -12,15 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config
+package registry
 
 import (
-	"github.com/stretchr/testify/assert"
-	"testing"
+	"github.com/onosproject/onos-lib-go/pkg/logging"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-func TestDummy(t *testing.T) {
-	injector := CompilerInjector{}
-	err := injector.InjectDecoder(nil)
-	assert.NoError(t, err)
+var log = logging.GetLogger("onos", "config", "registry")
+
+// RegisterWebhooks registes admission webhooks on the given manager
+func RegisterWebhooks(mgr manager.Manager) error {
+	mgr.GetWebhookServer().Register("/registry", &webhook.Admission{
+		Handler: &RegistryInjector{
+			client: mgr.GetClient(),
+		},
+	})
+	return nil
 }

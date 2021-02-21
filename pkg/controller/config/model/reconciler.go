@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"github.com/onosproject/onos-config-model/api/onos/configmodel"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
-	configadmission "github.com/onosproject/onos-operator/pkg/admission/config"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
+	"github.com/onosproject/onos-operator/pkg/controller/config/registry"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -181,7 +181,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 
 	// Install the model to each registry
 	for _, pod := range pods.Items {
-		if pod.Annotations[configadmission.RegistryInjectAnnotation] != "" {
+		if pod.Annotations[registry.RegistryInjectStatusAnnotation] == registry.RegistryInjectStatusInjected {
 			var index int
 			var status *v1beta1.RegistryStatus
 			var foundStatus v1beta1.RegistryStatus
@@ -380,7 +380,7 @@ func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, er
 
 	// Install the model to each registry
 	for _, pod := range pods.Items {
-		if pod.Annotations[configadmission.RegistryInjectAnnotation] != "" {
+		if pod.Annotations[registry.RegistryInjectStatusAnnotation] == registry.RegistryInjectStatusInjected {
 			log.Debugf("Deleting Model '%s/%s' from Pod '%s'", model.Namespace, model.Name, pod.Name)
 			conn, err := grpc.ConnectAddress(fmt.Sprintf("%s:5151", pod.Status.PodIP))
 			if err != nil {
@@ -413,7 +413,7 @@ type modelMapper struct {
 
 func (m *modelMapper) Map(object handler.MapObject) []reconcile.Request {
 	if _, ok := object.Object.(*v1beta1.Model); !ok {
-		if pod, ok := object.Object.(*corev1.Pod); !ok || pod.Annotations[configadmission.RegistryInjectAnnotation] == "" {
+		if pod, ok := object.Object.(*corev1.Pod); !ok || pod.Annotations[registry.RegistryInjectStatusAnnotation] != registry.RegistryInjectStatusInjected {
 			return []reconcile.Request{}
 		}
 	}

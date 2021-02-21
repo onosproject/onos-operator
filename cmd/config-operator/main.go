@@ -18,9 +18,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
-	configadmission "github.com/onosproject/onos-operator/pkg/admission/config"
 	configapi "github.com/onosproject/onos-operator/pkg/apis/config"
 	configctrl "github.com/onosproject/onos-operator/pkg/controller/config"
+	"github.com/onosproject/onos-operator/pkg/controller/config/registry"
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
-var log = logging.GetLogger("config-operator")
+var log = logging.GetLogger("onos", "config")
 
 func printVersion() {
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
@@ -91,7 +91,7 @@ func main() {
 	}
 
 	// Setup all webhooks
-	if err := configadmission.RegisterWebhooks(mgr); err != nil {
+	if err := registry.RegisterWebhooks(mgr); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
