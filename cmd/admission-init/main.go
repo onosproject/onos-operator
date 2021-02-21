@@ -138,7 +138,6 @@ func main() {
 		log.Panic(err)
 	}
 
-	compilerPath := "/compiler"
 	registryPath := "/registry"
 	sideEffects := admissionregistrationv1.SideEffectClassNone
 	failurePolicy := admissionregistrationv1.Ignore
@@ -149,32 +148,6 @@ func main() {
 			Name: service,
 		},
 		Webhooks: []admissionregistrationv1.MutatingWebhook{
-			{
-				Name: "compiler.config.onosproject.org",
-				Rules: []admissionregistrationv1.RuleWithOperations{
-					{
-						Rule: admissionregistrationv1.Rule{
-							APIGroups:   []string{""},
-							APIVersions: []string{"v1"},
-							Resources:   []string{"pods"},
-							Scope:       &scopeNamespaced,
-						},
-						Operations: []admissionregistrationv1.OperationType{admissionregistrationv1.Create},
-					},
-				},
-				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					Service: &admissionregistrationv1.ServiceReference{
-						Name:      service,
-						Namespace: namespace,
-						Path:      &compilerPath,
-					},
-					CABundle: caPEM.Bytes(),
-				},
-				AdmissionReviewVersions: []string{"v1beta1"},
-				SideEffects:             &sideEffects,
-				FailurePolicy:           &failurePolicy,
-				TimeoutSeconds:          &timeoutSeconds,
-			},
 			{
 				Name: "registry.config.onosproject.org",
 				Rules: []admissionregistrationv1.RuleWithOperations{
