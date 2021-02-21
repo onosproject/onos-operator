@@ -22,7 +22,7 @@ import (
 
 var log = logging.GetLogger("onos", "config", "registry")
 
-// RegisterWebhooks registes admission webhooks on the given manager
+// RegisterWebhooks registers admission webhooks on the given manager
 func RegisterWebhooks(mgr manager.Manager) error {
 	mgr.GetWebhookServer().Register("/registry", &webhook.Admission{
 		Handler: &RegistryInjector{

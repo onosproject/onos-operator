@@ -40,8 +40,6 @@ const (
 	RegistryPathAnnotation = "config.onosproject.org/registry-path"
 	// ModelAPIVersionAnnotation is an annotation indicating the model API version
 	ModelAPIVersionAnnotation = "config.onosproject.org/model-api-version"
-	// GoVersionAnnotation is an annotation indicating the Go version for which to compile a model
-	GoVersionAnnotation = "compiler.config.onosproject.org/go-version"
 	// GolangBuildVersionAnnotation is an annotation indicating the onosproject/go-build version for which to compile a model
 	GolangBuildVersionAnnotation = "compiler.config.onosproject.org/golang-build-version"
 	// GoModTargetAnnotation is an annotation indicating the Go module for which to compile a model
@@ -232,7 +230,7 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 			tags = append(tags, modelAPIVersion)
 		}
 		if golangBuildVersion != "" {
-			tags = append(tags, fmt.Sprintf("build-%s", golangBuildVersion))
+			tags = append(tags, fmt.Sprintf("golang-build-%s", golangBuildVersion))
 		}
 		image := fmt.Sprintf("onosproject/config-model-compiler:%s", strings.Join(tags, "-"))
 
@@ -300,7 +298,7 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		tags = append(tags, modelAPIVersion)
 	}
 	if golangBuildVersion != "" {
-		tags = append(tags, fmt.Sprintf("build%s", golangBuildVersion))
+		tags = append(tags, fmt.Sprintf("golang-build-%s", golangBuildVersion))
 	}
 	image := fmt.Sprintf("onosproject/config-model-registry:%s", strings.Join(tags, "-"))
 
