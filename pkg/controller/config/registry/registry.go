@@ -253,7 +253,7 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 
 		// Add the compiler init container
 		container := corev1.Container{
-			Name:  fmt.Sprintf("%s-%s-compiler", model.Spec.Plugin.Type, strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
+			Name:  fmt.Sprintf("%s-%s-compiler", strings.ToLower(model.Spec.Plugin.Type), strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
 			Image: image,
 			Args:  args,
 			VolumeMounts: []corev1.VolumeMount{
