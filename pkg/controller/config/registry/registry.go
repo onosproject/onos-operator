@@ -31,21 +31,25 @@ import (
 
 const (
 	// RegistryInjectAnnotation is an annotation indicating the model to inject the registry into a pod
-	RegistryInjectAnnotation = "config.onosproject.org/registry-inject"
+	RegistryInjectAnnotation = "registry.config.onosproject.org/inject"
+	// RegistryNamespaceAnnotation is an annotation indicating the registry namespace
+	RegistryNamespaceAnnotation = "registry.config.onosproject.org/namespace"
+	// RegistryNamespaceAnnotation is an annotation indicating the registry name
+	RegistryNameAnnotation = "registry.config.onosproject.org/name"
 	// RegistryInjectStatusAnnotation is an annotation indicating the status of registry injection
-	RegistryInjectStatusAnnotation = "config.onosproject.org/registry-inject-status"
+	RegistryInjectStatusAnnotation = "registry.config.onosproject.org/inject-status"
 	// RegistryInjectStatusInjeceted is an annotation value indicating the registry has been injected
 	RegistryInjectStatusInjected = "injected"
 	// RegistryPathAnnotation is an annotation indicating the path at which to mount the registry
-	RegistryPathAnnotation = "config.onosproject.org/registry-path"
+	RegistryPathAnnotation = "registry.config.onosproject.org/path"
 	// ModelAPIVersionAnnotation is an annotation indicating the model API version
-	ModelAPIVersionAnnotation = "config.onosproject.org/model-api-version"
+	ModelAPIVersionAnnotation = "plugin.config.onosproject.org/api-version"
 	// GolangBuildVersionAnnotation is an annotation indicating the onosproject/go-build version for which to compile a model
-	GolangBuildVersionAnnotation = "compiler.config.onosproject.org/golang-build-version"
+	GolangBuildVersionAnnotation = "plugin.config.onosproject.org/golang-build-version"
 	// GoModTargetAnnotation is an annotation indicating the Go module for which to compile a model
-	GoModTargetAnnotation = "compiler.config.onosproject.org/go-mod-target"
+	GoModTargetAnnotation = "plugin.config.onosproject.org/go-mod-target"
 	// GoModReplaceAnnotation is an annotation indicating a replacement for the target Go module
-	GoModReplaceAnnotation = "compiler.config.onosproject.org/go-mod-replace"
+	GoModReplaceAnnotation = "plugin.config.onosproject.org/go-mod-replace"
 )
 
 const (
@@ -105,6 +109,17 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		return admission.Denied(fmt.Sprintf("'%s' annotation not found", ModelAPIVersionAnnotation))
 	}
 
+	// Get the registry namespace and name
+	registryNamespace, ok := pod.Annotations[RegistryNamespaceAnnotation]
+	if !ok || registryNamespace == "" {
+		registryNamespace = request.Namespace
+	}
+	registryName, ok := pod.Annotations[RegistryNameAnnotation]
+	if !ok || registryName == "" {
+		log.Errorf("Failed to inject registry into Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, RegistryNameAnnotation)
+		return admission.Denied(fmt.Sprintf("'%s' annotation not found", RegistryNameAnnotation))
+	}
+
 	log.Infof("Injecting registry '%s' sidecar into Pod '%s/%s'", injectRegistry, pod.Name, pod.Namespace)
 
 	golangBuildVersion := pod.Annotations[GolangBuildVersionAnnotation]
@@ -117,11 +132,11 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 
 	// Load the registry to inject
 	registry := &configv1beta1.ModelRegistry{}
-	registryName := types.NamespacedName{
-		Namespace: request.Namespace,
-		Name:      injectRegistry,
+	registryNamespacedName := types.NamespacedName{
+		Namespace: registryNamespace,
+		Name:      registryName,
 	}
-	if err := i.client.Get(ctx, registryName, registry); err != nil {
+	if err := i.client.Get(ctx, registryNamespacedName, registry); err != nil {
 		log.Errorf("Failed to inject registry into Pod '%s/%s': %s", pod.Name, pod.Namespace, err)
 		return admission.Denied(err.Error())
 	}
