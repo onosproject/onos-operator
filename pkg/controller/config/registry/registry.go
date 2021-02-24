@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	configv1beta1 "github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
+	"github.com/rogpeppe/go-internal/module"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,14 +43,10 @@ const (
 	RegistryInjectStatusInjected = "injected"
 	// RegistryPathAnnotation is an annotation indicating the path at which to mount the registry
 	RegistryPathAnnotation = "registry.config.onosproject.org/path"
-	// ModelAPIVersionAnnotation is an annotation indicating the model API version
-	ModelAPIVersionAnnotation = "plugin.config.onosproject.org/api-version"
-	// GolangBuildVersionAnnotation is an annotation indicating the onosproject/go-build version for which to compile a model
-	GolangBuildVersionAnnotation = "plugin.config.onosproject.org/golang-build-version"
-	// GoModTargetAnnotation is an annotation indicating the Go module for which to compile a model
-	GoModTargetAnnotation = "plugin.config.onosproject.org/go-mod-target"
-	// GoModReplaceAnnotation is an annotation indicating a replacement for the target Go module
-	GoModReplaceAnnotation = "plugin.config.onosproject.org/go-mod-replace"
+	// CompilerVersionAnnotation is an annotation indicating the model API version
+	CompilerVersionAnnotation = "compiler.config.onosproject.org/version"
+	// TargetAnnotation is an annotation indicating the Go module for which to compile a model
+	TargetAnnotation = "compiler.config.onosproject.org/target"
 )
 
 const (
@@ -104,18 +101,24 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	}
 
 	// Get the model API version
-	modelAPIVersion, ok := pod.Annotations[ModelAPIVersionAnnotation]
+	modelAPIVersion, ok := pod.Annotations[CompilerVersionAnnotation]
 	if !ok {
-		log.Errorf("Failed to inject registry into Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, ModelAPIVersionAnnotation)
-		return admission.Denied(fmt.Sprintf("'%s' annotation not found", ModelAPIVersionAnnotation))
+		log.Errorf("Failed to inject registry into Pod '%s/%s': '%s' annotation not found", pod.Name, pod.Namespace, CompilerVersionAnnotation)
+		return admission.Denied(fmt.Sprintf("'%s' annotation not found", CompilerVersionAnnotation))
 	}
 
-	golangBuildVersion := pod.Annotations[GolangBuildVersionAnnotation]
-	goModTarget := pod.Annotations[GoModTargetAnnotation]
-	if goModTarget == "" {
-		goModTarget = defaultGoModTarget
+	goModTarget := defaultGoModTarget
+	var goModReplace string
+	targetMod := pod.Annotations[TargetAnnotation]
+	if targetMod != "" {
+		path, _, _ := module.SplitPathVersion(targetMod)
+		if path == goModTarget {
+			goModTarget = targetMod
+		} else {
+			goModReplace = targetMod
+		}
 	}
-	goModReplace := pod.Annotations[GoModReplaceAnnotation]
+
 	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
 	if !ok {
 		registryPath = defaultRegistryPath
@@ -250,9 +253,6 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 		if modelAPIVersion != "" {
 			tags = append(tags, modelAPIVersion)
 		}
-		if golangBuildVersion != "" {
-			tags = append(tags, fmt.Sprintf("golang-build-%s", golangBuildVersion))
-		}
 		image := fmt.Sprintf("onosproject/config-model-compiler:%s", strings.Join(tags, "-"))
 
 		// Add the compiler init container
@@ -317,9 +317,6 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 	var tags []string
 	if modelAPIVersion != "" {
 		tags = append(tags, modelAPIVersion)
-	}
-	if golangBuildVersion != "" {
-		tags = append(tags, fmt.Sprintf("golang-build-%s", golangBuildVersion))
 	}
 	image := fmt.Sprintf("onosproject/config-model-registry:%s", strings.Join(tags, "-"))
 
