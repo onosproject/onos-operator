@@ -55,6 +55,7 @@ const (
 const (
 	modelPath           = "/etc/onos/models"
 	buildPath           = "/build"
+	defaultGoModTarget  = "github.com/onosproject/onos-config"
 	defaultRegistryPath = "/etc/onos/plugins"
 )
 
@@ -111,6 +112,9 @@ func (i *RegistryInjector) Handle(ctx context.Context, request admission.Request
 
 	golangBuildVersion := pod.Annotations[GolangBuildVersionAnnotation]
 	goModTarget := pod.Annotations[GoModTargetAnnotation]
+	if goModTarget == "" {
+		goModTarget = defaultGoModTarget
+	}
 	goModReplace := pod.Annotations[GoModReplaceAnnotation]
 	registryPath, ok := pod.Annotations[RegistryPathAnnotation]
 	if !ok {
