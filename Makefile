@@ -3,7 +3,7 @@ export GO111MODULE=on
 
 .PHONY: build
 
-ONOS_OPERATOR_VERSION := latest
+ONOS_OPERATOR_VERSION ?= latest
 
 build: # @HELP build the Go binaries and run all validations (default)
 build:
@@ -69,9 +69,9 @@ jenkins-publish: build-tools jenkins-tools # @HELP Jenkins calls this to publish
 	../build-tools/release-merge-commit
 
 push: # @HELP push latest versions of the images to docker hub
-	docker push onosproject/config-operator-init:latest
-	docker push onosproject/config-operator:latest
-	docker push onosproject/topo-operator:latest
+	docker push onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
+	docker push onosproject/config-operator:${ONOS_OPERATOR_VERSION}
+	docker push onosproject/topo-operator:${ONOS_OPERATOR_VERSION}
 
 bumponosdeps: # @HELP update "onosproject" go dependencies and push patch to git.
 	./../build-tools/bump-onos-deps ${VERSION}
