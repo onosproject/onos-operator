@@ -11,70 +11,70 @@ spec:
     plural: models
     singular: model
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          required:
-            - spec
-          properties:
-            spec:
-              type: object
-              properties:
-                plugin:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        required:
+        - spec
+        properties:
+          spec:
+            type: object
+            properties:
+              plugin:
+                type: object
+                required:
+                - type
+                - version
+                properties:
+                  type:
+                    type: string
+                  version:
+                    type: string
+              dependencies:
+                type: array
+                items:
                   type: object
                   required:
-                    - type
-                    - version
+                  - name
                   properties:
-                    type:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+              modules:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  - version
+                  - data
+                  properties:
+                    name:
+                      type: string
+                    organization:
                       type: string
                     version:
                       type: string
-                dependencies:
-                  type: array
-                  items:
-                    type: object
-                    required:
-                      - name
-                    properties:
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                modules:
-                  type: array
-                  items:
-                    type: object
-                    required:
-                      - name
-                      - version
-                      - data
-                    properties:
-                      name:
-                        type: string
-                      organization:
-                        type: string
-                      version:
-                        type: string
-                      data:
-                        type: string
-            status:
-              type: object
-              properties:
-                registryStatuses:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      podName:
-                        type: string
-                      phase:
-                        type: string
+                    data:
+                      type: string
+          status:
+            type: object
+            properties:
+              registryStatuses:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    podName:
+                      type: string
+                    phase:
+                      type: string
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -89,21 +89,21 @@ spec:
     plural: modelregistries
     singular: modelregistry
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          required:
-            - spec
-          properties:
-            spec:
-              type: object
-              properties:
-                volume:
-                  x-kubernetes-preserve-unknown-fields: true
-                  type: object
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        required:
+        - spec
+        properties:
+          spec:
+            type: object
+            properties:
+              cache:
+                x-kubernetes-preserve-unknown-fields: true
+                type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -118,48 +118,48 @@ spec:
     plural: applications
     singular: application
     shortNames:
-      - app
+    - app
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - image
-              properties:
-                replicas:
-                  type: integer
-                  default: 1
-                image:
-                  type: string
-                imagePullPolicy:
-                  type: string
-                  default: IfNotPresent
-                model:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                config:
-                  type: object
-                  additionalProperties:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required:
+            - image
+            properties:
+              replicas:
+                type: integer
+                default: 1
+              image:
+                type: string
+              imagePullPolicy:
+                type: string
+                default: IfNotPresent
+              model:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
                     type: string
-            status:
-              type: object
-              properties:
-                readyReplicas:
-                  type: integer
+                  namespace:
+                    type: string
+              config:
+                type: object
+                additionalProperties:
+                  type: string
+          status:
+            type: object
+            properties:
+              readyReplicas:
+                type: integer
 
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -175,29 +175,29 @@ spec:
     plural: services
     singular: service
     shortNames:
-      - svc
+    - svc
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              properties:
-                selector:
-                  type: object
-                  properties:
-                    matchLabels:
-                      type: object
-                      additionalProperties:
-                        type: string
-            status:
-              type: object
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              selector:
+                type: object
+                properties:
+                  matchLabels:
+                    type: object
+                    additionalProperties:
+                      type: string
+          status:
+            type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -212,37 +212,37 @@ spec:
     plural: entities
     singular: entity
     shortNames:
-      - ent
+    - ent
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - kind
-              properties:
-                kind:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                attributes:
-                  type: object
-                  additionalProperties:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required:
+            - kind
+            properties:
+              kind:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
                     type: string
-            status:
-              type: object
+                  namespace:
+                    type: string
+              attributes:
+                type: object
+                additionalProperties:
+                  type: string
+          status:
+            type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -257,57 +257,57 @@ spec:
     plural: relations
     singular: relation
     shortNames:
-      - rel
+    - rel
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - kind
-                - source
-                - target
-              properties:
-                kind:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                source:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                target:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                attributes:
-                  type: object
-                  additionalProperties:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required:
+            - kind
+            - source
+            - target
+            properties:
+              kind:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
                     type: string
-            status:
-              type: object
+                  namespace:
+                    type: string
+              source:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+              target:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+              attributes:
+                type: object
+                additionalProperties:
+                  type: string
+          status:
+            type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -322,24 +322,24 @@ spec:
     plural: kinds
     singular: kind
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              properties:
-                attributes:
-                  type: object
-                  additionalProperties:
-                    type: string
-            status:
-              type: object
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              attributes:
+                type: object
+                additionalProperties:
+                  type: string
+          status:
+            type: object
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -353,49 +353,49 @@ metadata:
   creationTimestamp: null
   name: onos-operator
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - services
-      - configmaps
-    verbs:
-      - '*'
-  - apiGroups:
-      - ""
-    resources:
-      - namespaces
-    verbs:
-      - get
-  - apiGroups:
-      - policy
-    resources:
-      - poddisruptionbudgets
-    verbs:
-      - '*'
-  - apiGroups:
-      - core.onosproject.org
-      - config.onosproject.org
-      - topo.onosproject.org
-    resources:
-      - '*'
-    verbs:
-      - '*'
-  - apiGroups:
-      - admissionregistration.k8s.io
-    resources:
-      - mutatingwebhookconfigurations
-    verbs:
-      - '*'
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - configmaps
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - '*'
+- apiGroups:
+  - core.onosproject.org
+  - config.onosproject.org
+  - topo.onosproject.org
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - '*'
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: onos-operator
 subjects:
-  - kind: ServiceAccount
-    name: onos-operator
-    namespace: kube-system
+- kind: ServiceAccount
+  name: onos-operator
+  namespace: kube-system
 roleRef:
   kind: ClusterRole
   name: onos-operator
@@ -418,43 +418,43 @@ spec:
     spec:
       serviceAccountName: onos-operator
       containers:
-        - name: controller
-          image: onosproject/core-operator:latest
-          ports:
-            - containerPort: 60000
-              name: metrics
-          imagePullPolicy: IfNotPresent
-          readinessProbe:
-            exec:
-              command:
-                - stat
-                - /tmp/onos-operator-ready
-            initialDelaySeconds: 4
-            periodSeconds: 10
-            failureThreshold: 1
-          env:
-            - name: CONTROLLER_NAME
-              value: core-operator
-            - name: CONTROLLER_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          volumeMounts:
-            - name: config
-              mountPath: /etc/onos/config
-              readOnly: true
-      volumes:
+      - name: controller
+        image: onosproject/core-operator:latest
+        ports:
+        - containerPort: 60000
+          name: metrics
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          exec:
+            command:
+            - stat
+            - /tmp/onos-operator-ready
+          initialDelaySeconds: 4
+          periodSeconds: 10
+          failureThreshold: 1
+        env:
+        - name: CONTROLLER_NAME
+          value: core-operator
+        - name: CONTROLLER_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
         - name: config
-          configMap:
-            name: onos-operator-config
+          mountPath: /etc/onos/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: onos-operator-config
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -473,87 +473,87 @@ spec:
     spec:
       serviceAccountName: onos-operator
       initContainers:
-        - name: init-certs
-          image: onosproject/config-operator-init:latest
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsUser: 0
-          env:
-            - name: CONTROLLER_NAME
-              value: config-operator
-            - name: CONTROLLER_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          volumeMounts:
-            - name: config
-              mountPath: /etc/onos/config
-              readOnly: true
-            - name: plugins
-              mountPath: /etc/onos/plugins
-            - name: certs
-              mountPath: /etc/webhook/certs
-      containers:
-        - name: controller
-          image: onosproject/config-operator:latest
-          ports:
-            - containerPort: 60000
-              name: metrics
-            - containerPort: 443
-              name: webhook-server
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsUser: 0
-          readinessProbe:
-            exec:
-              command:
-                - stat
-                - /tmp/onos-operator-ready
-            initialDelaySeconds: 4
-            periodSeconds: 10
-            failureThreshold: 1
-          env:
-            - name: CONTROLLER_NAME
-              value: config-operator
-            - name: CONTROLLER_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          volumeMounts:
-            - name: config
-              mountPath: /etc/onos/config
-              readOnly: true
-            - name: plugins
-              mountPath: /etc/onos/plugins
-            - name: certs
-              mountPath: /tmp/k8s-webhook-server/serving-certs
-              readOnly: true
-      volumes:
+      - name: init-certs
+        image: onosproject/config-operator-init:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+        env:
+        - name: CONTROLLER_NAME
+          value: config-operator
+        - name: CONTROLLER_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
         - name: config
-          configMap:
-            name: onos-operator-config
-        - name: certs
-          emptyDir: {}
+          mountPath: /etc/onos/config
+          readOnly: true
         - name: plugins
-          emptyDir: {}
+          mountPath: /etc/onos/plugins
+        - name: certs
+          mountPath: /etc/webhook/certs
+      containers:
+      - name: controller
+        image: onosproject/config-operator:latest
+        ports:
+        - containerPort: 60000
+          name: metrics
+        - containerPort: 443
+          name: webhook-server
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+        readinessProbe:
+          exec:
+            command:
+            - stat
+            - /tmp/onos-operator-ready
+          initialDelaySeconds: 4
+          periodSeconds: 10
+          failureThreshold: 1
+        env:
+        - name: CONTROLLER_NAME
+          value: config-operator
+        - name: CONTROLLER_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: config
+          mountPath: /etc/onos/config
+          readOnly: true
+        - name: plugins
+          mountPath: /etc/onos/plugins
+        - name: certs
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: onos-operator-config
+      - name: certs
+        emptyDir: { }
+      - name: plugins
+        emptyDir: { }
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
@@ -562,17 +562,17 @@ metadata:
 webhooks:
 - name: registry.config.onosproject.org
   rules:
-  - operations: ["CREATE"]
-    apiGroups: [""]
-    apiVersions: ["v1"]
-    resources: ["pods"]
+  - operations: [ "CREATE" ]
+    apiGroups: [ "" ]
+    apiVersions: [ "v1" ]
+    resources: [ "pods" ]
     scope: Namespaced
   clientConfig:
     service:
       name: config-operator
       namespace: kube-system
       path: /registry
-  admissionReviewVersions: ["v1beta1"]
+  admissionReviewVersions: [ "v1beta1" ]
   sideEffects: None
   failurePolicy: Ignore
   timeoutSeconds: 10
@@ -588,9 +588,9 @@ spec:
   selector:
     name: config-operator
   ports:
-    - name: webhook
-      port: 443
-      targetPort: 443
+  - name: webhook
+    port: 443
+    targetPort: 443
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -609,43 +609,43 @@ spec:
     spec:
       serviceAccountName: onos-operator
       containers:
-        - name: controller
-          image: onosproject/topo-operator:latest
-          ports:
-            - containerPort: 60000
-              name: metrics
-          imagePullPolicy: IfNotPresent
-          readinessProbe:
-            exec:
-              command:
-                - stat
-                - /tmp/onos-operator-ready
-            initialDelaySeconds: 4
-            periodSeconds: 10
-            failureThreshold: 1
-          env:
-            - name: CONTROLLER_NAME
-              value: topo-operator
-            - name: CONTROLLER_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          volumeMounts:
-            - name: config
-              mountPath: /etc/onos/config
-              readOnly: true
-      volumes:
+      - name: controller
+        image: onosproject/topo-operator:latest
+        ports:
+        - containerPort: 60000
+          name: metrics
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          exec:
+            command:
+            - stat
+            - /tmp/onos-operator-ready
+          initialDelaySeconds: 4
+          periodSeconds: 10
+          failureThreshold: 1
+        env:
+        - name: CONTROLLER_NAME
+          value: topo-operator
+        - name: CONTROLLER_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
         - name: config
-          configMap:
-            name: onos-operator-config
+          mountPath: /etc/onos/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: onos-operator-config
 ---
 apiVersion: v1
 kind: ConfigMap

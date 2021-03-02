@@ -11,70 +11,70 @@ spec:
     plural: models
     singular: model
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          required:
-            - spec
-          properties:
-            spec:
-              type: object
-              properties:
-                plugin:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        required:
+        - spec
+        properties:
+          spec:
+            type: object
+            properties:
+              plugin:
+                type: object
+                required:
+                - type
+                - version
+                properties:
+                  type:
+                    type: string
+                  version:
+                    type: string
+              dependencies:
+                type: array
+                items:
                   type: object
                   required:
-                    - type
-                    - version
+                  - name
                   properties:
-                    type:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+              modules:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  - version
+                  - data
+                  properties:
+                    name:
+                      type: string
+                    organization:
                       type: string
                     version:
                       type: string
-                dependencies:
-                  type: array
-                  items:
-                    type: object
-                    required:
-                      - name
-                    properties:
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                modules:
-                  type: array
-                  items:
-                    type: object
-                    required:
-                      - name
-                      - version
-                      - data
-                    properties:
-                      name:
-                        type: string
-                      organization:
-                        type: string
-                      version:
-                        type: string
-                      data:
-                        type: string
-            status:
-              type: object
-              properties:
-                registryStatuses:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      podName:
-                        type: string
-                      phase:
-                        type: string
+                    data:
+                      type: string
+          status:
+            type: object
+            properties:
+              registryStatuses:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    podName:
+                      type: string
+                    phase:
+                      type: string
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -89,21 +89,21 @@ spec:
     plural: modelregistries
     singular: modelregistry
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          required:
-            - spec
-          properties:
-            spec:
-              type: object
-              properties:
-                volume:
-                  x-kubernetes-preserve-unknown-fields: true
-                  type: object
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        required:
+        - spec
+        properties:
+          spec:
+            type: object
+            properties:
+              cache:
+                x-kubernetes-preserve-unknown-fields: true
+                type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -118,48 +118,48 @@ spec:
     plural: applications
     singular: application
     shortNames:
-      - app
+    - app
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - image
-              properties:
-                replicas:
-                  type: integer
-                  default: 1
-                image:
-                  type: string
-                imagePullPolicy:
-                  type: string
-                  default: IfNotPresent
-                model:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                config:
-                  type: object
-                  additionalProperties:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required:
+            - image
+            properties:
+              replicas:
+                type: integer
+                default: 1
+              image:
+                type: string
+              imagePullPolicy:
+                type: string
+                default: IfNotPresent
+              model:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
                     type: string
-            status:
-              type: object
-              properties:
-                readyReplicas:
-                  type: integer
+                  namespace:
+                    type: string
+              config:
+                type: object
+                additionalProperties:
+                  type: string
+          status:
+            type: object
+            properties:
+              readyReplicas:
+                type: integer
 
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -175,29 +175,29 @@ spec:
     plural: services
     singular: service
     shortNames:
-      - svc
+    - svc
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              properties:
-                selector:
-                  type: object
-                  properties:
-                    matchLabels:
-                      type: object
-                      additionalProperties:
-                        type: string
-            status:
-              type: object
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              selector:
+                type: object
+                properties:
+                  matchLabels:
+                    type: object
+                    additionalProperties:
+                      type: string
+          status:
+            type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -212,37 +212,37 @@ spec:
     plural: entities
     singular: entity
     shortNames:
-      - ent
+    - ent
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - kind
-              properties:
-                kind:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                attributes:
-                  type: object
-                  additionalProperties:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required:
+            - kind
+            properties:
+              kind:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
                     type: string
-            status:
-              type: object
+                  namespace:
+                    type: string
+              attributes:
+                type: object
+                additionalProperties:
+                  type: string
+          status:
+            type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -257,57 +257,57 @@ spec:
     plural: relations
     singular: relation
     shortNames:
-      - rel
+    - rel
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - kind
-                - source
-                - target
-              properties:
-                kind:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                source:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                target:
-                  type: object
-                  required:
-                    - name
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                attributes:
-                  type: object
-                  additionalProperties:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required:
+            - kind
+            - source
+            - target
+            properties:
+              kind:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
                     type: string
-            status:
-              type: object
+                  namespace:
+                    type: string
+              source:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+              target:
+                type: object
+                required:
+                - name
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+              attributes:
+                type: object
+                additionalProperties:
+                  type: string
+          status:
+            type: object
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -322,21 +322,21 @@ spec:
     plural: kinds
     singular: kind
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              properties:
-                attributes:
-                  type: object
-                  additionalProperties:
-                    type: string
-            status:
-              type: object
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: { }
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              attributes:
+                type: object
+                additionalProperties:
+                  type: string
+          status:
+            type: object

@@ -25,7 +25,7 @@ var log = logging.GetLogger("onos", "config", "registry")
 // RegisterWebhooks registers admission webhooks on the given manager
 func RegisterWebhooks(mgr manager.Manager) error {
 	mgr.GetWebhookServer().Register("/registry", &webhook.Admission{
-		Handler: &RegistryInjector{
+		Handler: &RegistryHandler{
 			client: mgr.GetClient(),
 		},
 	})

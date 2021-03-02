@@ -21,7 +21,12 @@ import (
 
 // ModelRegistrySpec is the k8s spec for a ModelRegistry resource
 type ModelRegistrySpec struct {
-	Volume corev1.Volume `json:"volume,omitempty"`
+	Cache ModelRegistryCache `json:"cache,omitempty"`
+}
+
+// ModelRegistryCache is the k8s configuration for the model registry cache
+type ModelRegistryCache struct {
+	*corev1.Volume `json:",inline"`
 }
 
 // +genclient
