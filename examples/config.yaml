@@ -458,7 +458,7 @@ spec:
   # The dependencies allow the model to import modules from another model. Modules defined by dependencies
   # can be safely referenced by this model's YANG modules.
   dependencies:
-    - name: ietf
+  - name: ietf
   # The modules define a set of YANG modules to compile.
   modules:
   - name: test1

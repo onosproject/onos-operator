@@ -8,7 +8,6 @@ ONOS_OPERATOR_VERSION := latest
 build: # @HELP build the Go binaries and run all validations (default)
 build:
 	go build -o build/_output/admission-init ./cmd/admission-init
-	go build -o build/_output/core-operator ./cmd/core-operator
 	go build -o build/_output/config-operator ./cmd/config-operator
 	go build -o build/_output/topo-operator ./cmd/topo-operator
 
@@ -48,8 +47,6 @@ license_check: build-tools # @HELP examine and ensure license headers exist
 images: # @HELP build Docker images
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/admission-init/_output/bin/admission-init ./cmd/admission-init
 	docker build . -f build/admission-init/Dockerfile -t onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/core-operator/_output/bin/core-operator ./cmd/core-operator
-	docker build . -f build/core-operator/Dockerfile -t onosproject/core-operator:${ONOS_OPERATOR_VERSION}
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/config-operator/_output/bin/config-operator ./cmd/config-operator
 	docker build . -f build/config-operator/Dockerfile -t onosproject/config-operator:${ONOS_OPERATOR_VERSION}
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/topo-operator/_output/bin/topo-operator ./cmd/topo-operator
@@ -59,21 +56,20 @@ kind: # @HELP build Docker images and add them to the currently configured kind 
 kind: images
 	@if [ "`kind get clusters`" = '' ]; then echo "no kind cluster found" && exit 1; fi
 	kind load docker-image onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
-	kind load docker-image onosproject/core-operator:${ONOS_OPERATOR_VERSION}
 	kind load docker-image onosproject/config-operator:${ONOS_OPERATOR_VERSION}
 	kind load docker-image onosproject/topo-operator:${ONOS_OPERATOR_VERSION}
 
 all: build images
 
 publish: # @HELP publish version on github and dockerhub
-	./../build-tools/publish-version ${VERSION} onosproject/core-operator onosproject/config-operator onosproject/topo-operator
+	./../build-tools/publish-version ${VERSION} onosproject/config-operator-init onosproject/config-operator onosproject/topo-operator
 
 jenkins-publish: build-tools jenkins-tools # @HELP Jenkins calls this to publish artifacts
 	./build/bin/push-images
 	../build-tools/release-merge-commit
 
 push: # @HELP push latest versions of the images to docker hub
-	docker push onosproject/core-operator:latest
+	docker push onosproject/config-operator-init:latest
 	docker push onosproject/config-operator:latest
 	docker push onosproject/topo-operator:latest
 
@@ -81,7 +77,7 @@ bumponosdeps: # @HELP update "onosproject" go dependencies and push patch to git
 	./../build-tools/bump-onos-deps ${VERSION}
 
 clean: # @HELP remove all the build artifacts
-	rm -rf ./build/_output ./vendor ./cmd/dummy/dummy build/core-operator/_output build/config-operator/_output build/topo-operator/_output
+	rm -rf ./build/_output ./vendor ./cmd/dummy/dummy build/admission-init/_output build/config-operator/_output build/topo-operator/_output
 
 help:
 	@grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST) \

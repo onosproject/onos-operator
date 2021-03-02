@@ -36,5 +36,5 @@ spec:
         name: my-xapp
     spec:
       containers:
-        - name: my-xapp
-          image: onosproject/my-xapp:latest
+      - name: my-xapp
+        image: onosproject/my-xapp:latest
