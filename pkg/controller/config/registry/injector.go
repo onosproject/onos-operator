@@ -1,3 +1,17 @@
+// Copyright 2019-present Open Networking Foundation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package registry
 
 import (
@@ -16,7 +30,7 @@ const (
 	RegistryInjectAnnotation = "registry.config.onosproject.org/inject"
 	// RegistryInjectStatusAnnotation is an annotation indicating the status of registry injection
 	RegistryInjectStatusAnnotation = "registry.config.onosproject.org/inject-status"
-	// RegistryInjectStatusInjeceted is an annotation value indicating the registry has been injected
+	// RegistryInjectStatusInjected is an annotation value indicating the registry has been injected
 	RegistryInjectStatusInjected = "injected"
 	// RegistryPathAnnotation is an annotation indicating the path at which to mount the registry
 	RegistryPathAnnotation = "registry.config.onosproject.org/path"
@@ -38,20 +52,20 @@ const (
 	defaultCachePath    = "/etc/onos/cache"
 )
 
-func newInjector(client client.Client, namespace string) *RegistryInjector {
-	return &RegistryInjector{
+func newInjector(client client.Client, namespace string) *Injector {
+	return &Injector{
 		client:    client,
 		namespace: namespace,
 	}
 }
 
-// RegistryInjector is a mutating webhook for injecting the registry container into pods
-type RegistryInjector struct {
+// Injector is a mutating webhook for injecting the registry container into pods
+type Injector struct {
 	client    client.Client
 	namespace string
 }
 
-func (i *RegistryInjector) inject(ctx context.Context, pod *corev1.Pod) (bool, error) {
+func (i *Injector) inject(ctx context.Context, pod *corev1.Pod) (bool, error) {
 	// Determine whether registry injection is enabled for this pod
 	injectRegistry, ok := pod.Annotations[RegistryInjectAnnotation]
 	if !ok || injectRegistry == "" {
@@ -78,7 +92,7 @@ func (i *RegistryInjector) inject(ctx context.Context, pod *corev1.Pod) (bool, e
 	return true, nil
 }
 
-func (i *RegistryInjector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
+func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 	registryName, err := i.getRegistryName(pod)
 	if err != nil {
 		return err
@@ -208,7 +222,7 @@ func (i *RegistryInjector) injectRegistry(ctx context.Context, pod *corev1.Pod) 
 	return nil
 }
 
-func (i *RegistryInjector) injectCompilers(ctx context.Context, pod *corev1.Pod) error {
+func (i *Injector) injectCompilers(ctx context.Context, pod *corev1.Pod) error {
 	// Load existing models via init containers
 	modelList := &configv1beta1.ModelList{}
 	modelListOpts := &client.ListOptions{
@@ -226,7 +240,7 @@ func (i *RegistryInjector) injectCompilers(ctx context.Context, pod *corev1.Pod)
 	return nil
 }
 
-func (i *RegistryInjector) injectCompiler(ctx context.Context, pod *corev1.Pod, model configv1beta1.Model) error {
+func (i *Injector) injectCompiler(ctx context.Context, pod *corev1.Pod, model configv1beta1.Model) error {
 	registryPath, err := i.getRegistryPath(pod)
 	if err != nil {
 		return err
@@ -332,7 +346,7 @@ func (i *RegistryInjector) injectCompiler(ctx context.Context, pod *corev1.Pod, 
 	return nil
 }
 
-func (i *RegistryInjector) getCompilerVersion(pod *corev1.Pod) (string, error) {
+func (i *Injector) getCompilerVersion(pod *corev1.Pod) (string, error) {
 	compilerVersion, ok := pod.Annotations[CompilerVersionAnnotation]
 	if !ok {
 		return "", fmt.Errorf("'%s' annotation not found", CompilerVersionAnnotation)
@@ -340,12 +354,12 @@ func (i *RegistryInjector) getCompilerVersion(pod *corev1.Pod) (string, error) {
 	return compilerVersion, nil
 }
 
-func (i *RegistryInjector) getCompilerTarget(pod *corev1.Pod) (string, error) {
+func (i *Injector) getCompilerTarget(pod *corev1.Pod) (string, error) {
 	compilerTarget := pod.Annotations[CompilerTargetAnnotation]
 	return compilerTarget, nil
 }
 
-func (i *RegistryInjector) getModTarget(pod *corev1.Pod) (string, error) {
+func (i *Injector) getModTarget(pod *corev1.Pod) (string, error) {
 	compilerTarget, err := i.getCompilerTarget(pod)
 	if err != nil {
 		return "", err
@@ -360,7 +374,7 @@ func (i *RegistryInjector) getModTarget(pod *corev1.Pod) (string, error) {
 	return compilerTarget, nil
 }
 
-func (i *RegistryInjector) getModReplace(pod *corev1.Pod) (string, error) {
+func (i *Injector) getModReplace(pod *corev1.Pod) (string, error) {
 	compilerTarget, err := i.getCompilerTarget(pod)
 	if err != nil {
 		return "", err
@@ -375,7 +389,7 @@ func (i *RegistryInjector) getModReplace(pod *corev1.Pod) (string, error) {
 	return compilerTarget, nil
 }
 
-func (i *RegistryInjector) getRegistryPath(pod *corev1.Pod) (string, error) {
+func (i *Injector) getRegistryPath(pod *corev1.Pod) (string, error) {
 	path, ok := pod.Annotations[RegistryPathAnnotation]
 	if !ok {
 		return defaultRegistryPath, nil
@@ -383,12 +397,12 @@ func (i *RegistryInjector) getRegistryPath(pod *corev1.Pod) (string, error) {
 	return path, nil
 }
 
-func (i *RegistryInjector) getRegistryName(pod *corev1.Pod) (string, error) {
+func (i *Injector) getRegistryName(pod *corev1.Pod) (string, error) {
 	registry := pod.Annotations[RegistryInjectAnnotation]
 	return registry, nil
 }
 
-func (i *RegistryInjector) getCachePath(pod *corev1.Pod) (string, error) {
+func (i *Injector) getCachePath(pod *corev1.Pod) (string, error) {
 	path, ok := pod.Annotations[CachePathAnnotation]
 	if !ok {
 		return defaultCachePath, nil
