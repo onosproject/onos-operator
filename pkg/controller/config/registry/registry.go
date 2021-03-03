@@ -24,20 +24,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// RegistryHandler is a mutating webhook for injecting the registry container into pods
-type RegistryHandler struct {
+// Handler is a mutating webhook for injecting the registry container into pods
+type Handler struct {
 	client  client.Client
 	decoder *admission.Decoder
 }
 
 // InjectDecoder :
-func (h *RegistryHandler) InjectDecoder(decoder *admission.Decoder) error {
+func (h *Handler) InjectDecoder(decoder *admission.Decoder) error {
 	h.decoder = decoder
 	return nil
 }
 
 // Handle :
-func (h *RegistryHandler) Handle(ctx context.Context, request admission.Request) admission.Response {
+func (h *Handler) Handle(ctx context.Context, request admission.Request) admission.Response {
 	log.Infof("Received admission request for Pod '%s/%s'", request.Name, request.Namespace)
 
 	// Decode the pod
@@ -69,5 +69,5 @@ func (h *RegistryHandler) Handle(ctx context.Context, request admission.Request)
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshaledPod)
 }
 
-var _ admission.Handler = &RegistryHandler{}
-var _ admission.DecoderInjector = &RegistryHandler{}
+var _ admission.Handler = &Handler{}
+var _ admission.DecoderInjector = &Handler{}
