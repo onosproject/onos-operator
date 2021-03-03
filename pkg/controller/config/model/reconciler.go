@@ -129,13 +129,10 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		}
 
 		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Name, model.Namespace, model.Name)
-		data, err := r.getModuleData(model)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				return reconcile.Result{}, err
-			}
-			log.Errorf("Could not load modules for Model '%s/%s'", model.Namespace, model.Name)
-			return reconcile.Result{}, nil
+		files := make(map[string]string)
+		for _, module := range model.Spec.Modules {
+			name := fmt.Sprintf("%s-%s.yang", module.Name, module.Revision)
+			files[name] = module.Data
 		}
 
 		cm = &corev1.ConfigMap{
@@ -143,7 +140,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 				Name:      model.Name,
 				Namespace: model.Namespace,
 			},
-			Data: data,
+			Data: files,
 		}
 		if err := controllerutil.SetOwnerReference(model, cm, r.scheme); err != nil {
 			log.Warnf("Failed to set ConfigMap '%s' owner Model '%s/%s': %s", model.Name, model.Namespace, model.Name, err)
@@ -229,13 +226,14 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 				}
 				defer conn.Close()
 				client := configmodel.NewConfigModelRegistryServiceClient(conn)
-				modules, err := r.getModuleConfigs(model)
-				if err != nil {
-					if !errors.IsNotFound(err) {
-						return reconcile.Result{}, err
-					}
-					log.Errorf("Could not install modules for Model '%s/%s'", model.Namespace, model.Name)
-					return reconcile.Result{}, nil
+				modules := make([]*configmodel.ConfigModule, 0)
+				for _, module := range model.Spec.Modules {
+					modules = append(modules, &configmodel.ConfigModule{
+						Name:         module.Name,
+						Organization: module.Organization,
+						Version:      module.Revision,
+						Data:         []byte(module.Data),
+					})
 				}
 
 				request := &configmodel.PushModelRequest{
@@ -289,72 +287,6 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		}
 	}
 	return reconcile.Result{}, nil
-}
-
-func (r *Reconciler) getModuleData(model *v1beta1.Model) (map[string]string, error) {
-	files := make(map[string]string)
-	for _, module := range model.Spec.Modules {
-		name := fmt.Sprintf("%s-%s.yang", module.Name, module.Version)
-		files[name] = module.Data
-	}
-
-	for _, dep := range model.Spec.Dependencies {
-		ns := dep.Namespace
-		if ns == "" {
-			ns = model.Namespace
-		}
-		modelDep := &v1beta1.Model{}
-		modelDepName := types.NamespacedName{
-			Name:      dep.Name,
-			Namespace: ns,
-		}
-		if err := r.client.Get(context.Background(), modelDepName, modelDep); err != nil {
-			return nil, err
-		}
-
-		refData, err := r.getModuleData(modelDep)
-		if err != nil {
-			return nil, err
-		}
-		for name, value := range refData {
-			files[name] = value
-		}
-	}
-	return files, nil
-}
-
-func (r *Reconciler) getModuleConfigs(model *v1beta1.Model) ([]*configmodel.ConfigModule, error) {
-	configs := make([]*configmodel.ConfigModule, 0)
-	for _, module := range model.Spec.Modules {
-		configs = append(configs, &configmodel.ConfigModule{
-			Name:         module.Name,
-			Organization: module.Organization,
-			Version:      module.Version,
-			Data:         []byte(module.Data),
-		})
-	}
-
-	for _, dep := range model.Spec.Dependencies {
-		ns := dep.Namespace
-		if ns == "" {
-			ns = model.Namespace
-		}
-		modelDep := &v1beta1.Model{}
-		modelDepName := types.NamespacedName{
-			Name:      dep.Name,
-			Namespace: ns,
-		}
-		if err := r.client.Get(context.Background(), modelDepName, modelDep); err != nil {
-			return nil, err
-		}
-
-		refConfigs, err := r.getModuleConfigs(modelDep)
-		if err != nil {
-			return nil, err
-		}
-		configs = append(configs, refConfigs...)
-	}
-	return configs, nil
 }
 
 func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, error) {

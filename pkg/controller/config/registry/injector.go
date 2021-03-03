@@ -255,9 +255,11 @@ func (i *RegistryInjector) injectCompiler(ctx context.Context, pod *corev1.Pod, 
 	log.Infof("Injecting model '%s' into Pod '%s/%s'", model.Name, pod.Name, pod.Namespace)
 
 	// Load the model files
-	files, err := i.getModelFiles(ctx, model)
-	if err != nil {
-		return err
+	files := make(map[string]string)
+	for _, module := range model.Spec.Modules {
+		name := fmt.Sprintf("%s@%s", module.Name, module.Revision)
+		file := fmt.Sprintf("%s-%s.yang", module.Name, module.Revision)
+		files[name] = file
 	}
 
 	// Add the model volume to the pod
@@ -392,37 +394,4 @@ func (i *RegistryInjector) getCachePath(pod *corev1.Pod) (string, error) {
 		return defaultCachePath, nil
 	}
 	return path, nil
-}
-
-func (i *RegistryInjector) getModelFiles(ctx context.Context, model configv1beta1.Model) (map[string]string, error) {
-	files := make(map[string]string)
-	for _, module := range model.Spec.Modules {
-		name := fmt.Sprintf("%s@%s", module.Name, module.Version)
-		file := fmt.Sprintf("%s-%s.yang", module.Name, module.Version)
-		files[name] = file
-	}
-
-	for _, dep := range model.Spec.Dependencies {
-		ns := dep.Namespace
-		if ns == "" {
-			ns = model.Namespace
-		}
-		modelDep := configv1beta1.Model{}
-		modelDepName := types.NamespacedName{
-			Name:      dep.Name,
-			Namespace: ns,
-		}
-		if err := i.client.Get(ctx, modelDepName, &modelDep); err != nil {
-			return nil, err
-		}
-
-		refFiles, err := i.getModelFiles(ctx, modelDep)
-		if err != nil {
-			return nil, err
-		}
-		for name, value := range refFiles {
-			files[name] = value
-		}
-	}
-	return files, nil
 }

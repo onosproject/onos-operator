@@ -20,9 +20,8 @@ import (
 
 // ModelSpec is the k8s spec for a Model resource
 type ModelSpec struct {
-	Plugin       *PluginSpec  `json:"plugin,omitempty"`
-	Modules      []Module     `json:"modules,omitempty"`
-	Dependencies []Dependency `json:"dependencies,omitempty"`
+	Plugin  *PluginSpec `json:"plugin,omitempty"`
+	Modules []Module    `json:"modules,omitempty"`
 }
 
 // PluginSpec is the spec for a Model plugin
@@ -35,13 +34,8 @@ type PluginSpec struct {
 type Module struct {
 	Name         string `json:"name,omitempty"`
 	Organization string `json:"organization,omitempty"`
-	Version      string `json:"version,omitempty"`
+	Revision     string `json:"revision,omitempty"`
 	Data         string `json:"data,omitempty"`
-}
-
-// Dependency defines a model dependency
-type Dependency struct {
-	metav1.ObjectMeta `json:",inline"`
 }
 
 // ModelStatus defines the observed state of Model
