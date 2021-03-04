@@ -21,6 +21,7 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	"github.com/onosproject/onos-operator/pkg/controller/config/registry"
+	"github.com/onosproject/onos-operator/pkg/controller/config/util"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -130,11 +131,9 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 
 		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Name, model.Namespace, model.Name)
 		files := make(map[string]string)
-		for _, module := range model.Spec.Modules {
-			name := fmt.Sprintf("%s-%s.yang", module.Name, module.Revision)
-			files[name] = module.Data
+		for name, data := range model.Spec.Files {
+			files[util.NormalizeFileName(name)] = data
 		}
-
 		cm = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      model.Name,
@@ -231,9 +230,14 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 					modules = append(modules, &configmodel.ConfigModule{
 						Name:         module.Name,
 						Organization: module.Organization,
-						Version:      module.Revision,
-						Data:         []byte(module.Data),
+						Revision:     module.Revision,
+						File:         util.NormalizeFileName(module.File),
 					})
+				}
+
+				files := make(map[string]string)
+				for name, data := range model.Spec.Files {
+					files[util.NormalizeFileName(name)] = data
 				}
 
 				request := &configmodel.PushModelRequest{
@@ -241,6 +245,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 						Name:    model.Spec.Plugin.Type,
 						Version: model.Spec.Plugin.Version,
 						Modules: modules,
+						Files:   files,
 					},
 				}
 				if _, err := client.PushModel(context.TODO(), request); err != nil {

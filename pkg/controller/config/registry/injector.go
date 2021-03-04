@@ -18,9 +18,11 @@ import (
 	"context"
 	"fmt"
 	configv1beta1 "github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
+	"github.com/onosproject/onos-operator/pkg/controller/config/util"
 	"github.com/rogpeppe/go-internal/module"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
@@ -202,9 +204,10 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 
 	// Add the registry sidecar container
 	container := corev1.Container{
-		Name:  "model-registry",
-		Image: image,
-		Args:  args,
+		Name:            "model-registry",
+		Image:           image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Args:            args,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      registryVolumeName,
@@ -233,14 +236,14 @@ func (i *Injector) injectCompilers(ctx context.Context, pod *corev1.Pod) error {
 	}
 
 	for _, model := range modelList.Items {
-		if err := i.injectCompiler(ctx, pod, model); err != nil {
+		if err := i.injectCompiler(pod, model); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (i *Injector) injectCompiler(ctx context.Context, pod *corev1.Pod, model configv1beta1.Model) error {
+func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) error {
 	registryPath, err := i.getRegistryPath(pod)
 	if err != nil {
 		return err
@@ -267,14 +270,6 @@ func (i *Injector) injectCompiler(ctx context.Context, pod *corev1.Pod, model co
 	}
 
 	log.Infof("Injecting model '%s' into Pod '%s/%s'", model.Name, pod.Name, pod.Namespace)
-
-	// Load the model files
-	files := make(map[string]string)
-	for _, module := range model.Spec.Modules {
-		name := fmt.Sprintf("%s@%s", module.Name, module.Revision)
-		file := fmt.Sprintf("%s-%s.yang", module.Name, module.Revision)
-		files[name] = file
-	}
 
 	// Add the model volume to the pod
 	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
@@ -309,9 +304,14 @@ func (i *Injector) injectCompiler(ctx context.Context, pod *corev1.Pod, model co
 		args = append(args, "--replace", modReplace)
 	}
 
+	// Add file arguments
+	for name := range model.Spec.Files {
+		args = append(args, "--file", filepath.Join(modelPath, util.NormalizeFileName(name)))
+	}
+
 	// Add module arguments
-	for module, file := range files {
-		args = append(args, "--module", fmt.Sprintf("%s=%s/%s", module, modelPath, file))
+	for _, module := range model.Spec.Modules {
+		args = append(args, "--module", fmt.Sprintf("%s@%s=%s", module.Name, module.Revision, util.NormalizeFileName(module.File)))
 	}
 
 	var tags []string
@@ -322,9 +322,10 @@ func (i *Injector) injectCompiler(ctx context.Context, pod *corev1.Pod, model co
 
 	// Add the compiler init container
 	container := corev1.Container{
-		Name:  fmt.Sprintf("%s-%s-compiler", strings.ToLower(model.Spec.Plugin.Type), strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
-		Image: image,
-		Args:  args,
+		Name:            fmt.Sprintf("%s-%s-compiler", strings.ToLower(model.Spec.Plugin.Type), strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
+		Image:           image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Args:            args,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      model.Name,

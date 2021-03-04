@@ -298,8 +298,8 @@ github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn
 github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/onosproject/onos-api/go v0.7.6 h1:NrIfyd4K4+zdnXtqd6ArhKEexDZhgzZ2LCGN3G74S2s=
 github.com/onosproject/onos-api/go v0.7.6/go.mod h1:Has28v1hruZLUxY1E5cCZq76UHXJZLbh62h1W8KQztQ=
-github.com/onosproject/onos-config-model v0.0.1 h1:bI7KS5oDoDCkWEGWOCtZOBb1yEntnct9IceXjnzc+RU=
-github.com/onosproject/onos-config-model v0.0.1/go.mod h1:p5psRluBlT72qy6UYjm7driI6OhFIyeABd7LItefCfo=
+github.com/onosproject/onos-config-model v0.2.0 h1:Vptc1Ehu14KOCRdSK9M8A5iK+SlSDu+XI3aCcaxFfd8=
+github.com/onosproject/onos-config-model v0.2.0/go.mod h1:laYWqKx328pOHB2TWMZzXrZF6OFakuIsc4TTBgjSisY=
 github.com/onosproject/onos-lib-go v0.7.3 h1:Ya+PosD8MkNNCPR4fs9j/f5gGCV7Y1yFyZZ9e4aX3ig=
 github.com/onosproject/onos-lib-go v0.7.3/go.mod h1:ttkK+fV2CULZFHiq6FBZ69i7/Nymi1Wow1DNy0Ik/2o=
 github.com/onsi/ginkgo v0.0.0-20170829012221-11459a886d9c/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
