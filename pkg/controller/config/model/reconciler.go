@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"strings"
 )
 
 var log = logging.GetLogger("controller", "config", "model")
@@ -129,12 +130,16 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		}
 
 		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Name, model.Namespace, model.Name)
+		files := make(map[string]string)
+		for name, data := range model.Spec.Files {
+			files[strings.ReplaceAll(name, "@", "-")] = data
+		}
 		cm = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      model.Name,
 				Namespace: model.Namespace,
 			},
-			Data: model.Spec.Files,
+			Data: files,
 		}
 		if err := controllerutil.SetOwnerReference(model, cm, r.scheme); err != nil {
 			log.Warnf("Failed to set ConfigMap '%s' owner Model '%s/%s': %s", model.Name, model.Namespace, model.Name, err)
@@ -226,8 +231,13 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 						Name:         module.Name,
 						Organization: module.Organization,
 						Revision:     module.Revision,
-						File:         module.File,
+						File:         strings.ReplaceAll(module.File, "@", "-"),
 					})
+				}
+
+				files := make(map[string]string)
+				for name, data := range model.Spec.Files {
+					files[strings.ReplaceAll(name, "@", "-")] = data
 				}
 
 				request := &configmodel.PushModelRequest{
@@ -235,7 +245,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 						Name:    model.Spec.Plugin.Type,
 						Version: model.Spec.Plugin.Version,
 						Modules: modules,
-						Files:   model.Spec.Files,
+						Files:   files,
 					},
 				}
 				if _, err := client.PushModel(context.TODO(), request); err != nil {

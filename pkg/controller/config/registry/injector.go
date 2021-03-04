@@ -305,12 +305,12 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 
 	// Add file arguments
 	for name := range model.Spec.Files {
-		args = append(args, "--file", filepath.Join(modelPath, name))
+		args = append(args, "--file", filepath.Join(modelPath, strings.ReplaceAll(name, "@", "-")))
 	}
 
 	// Add module arguments
 	for _, module := range model.Spec.Modules {
-		args = append(args, "--module", fmt.Sprintf("%s@%s=%s", module.Name, module.Revision, module.File))
+		args = append(args, "--module", fmt.Sprintf("%s@%s=%s", module.Name, module.Revision, strings.ReplaceAll(module.File, "@", "-")))
 	}
 
 	var tags []string
