@@ -233,14 +233,14 @@ func (i *Injector) injectCompilers(ctx context.Context, pod *corev1.Pod) error {
 	}
 
 	for _, model := range modelList.Items {
-		if err := i.injectCompiler(ctx, pod, model); err != nil {
+		if err := i.injectCompiler(pod, model); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (i *Injector) injectCompiler(ctx context.Context, pod *corev1.Pod, model configv1beta1.Model) error {
+func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) error {
 	registryPath, err := i.getRegistryPath(pod)
 	if err != nil {
 		return err
@@ -267,14 +267,6 @@ func (i *Injector) injectCompiler(ctx context.Context, pod *corev1.Pod, model co
 	}
 
 	log.Infof("Injecting model '%s' into Pod '%s/%s'", model.Name, pod.Name, pod.Namespace)
-
-	// Load the model files
-	files := make(map[string]string)
-	for _, module := range model.Spec.Modules {
-		name := fmt.Sprintf("%s@%s", module.Name, module.Revision)
-		file := fmt.Sprintf("%s-%s.yang", module.Name, module.Revision)
-		files[name] = file
-	}
 
 	// Add the model volume to the pod
 	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
@@ -309,9 +301,14 @@ func (i *Injector) injectCompiler(ctx context.Context, pod *corev1.Pod, model co
 		args = append(args, "--replace", modReplace)
 	}
 
+	// Add file arguments
+	for name := range model.Spec.Files {
+		args = append(args, "--file", name)
+	}
+
 	// Add module arguments
-	for module, file := range files {
-		args = append(args, "--module", fmt.Sprintf("%s=%s/%s", module, modelPath, file))
+	for _, module := range model.Spec.Modules {
+		args = append(args, "--module", fmt.Sprintf("%s@%s=%s/%s", module.Name, module.Revision, modelPath, module.File))
 	}
 
 	var tags []string

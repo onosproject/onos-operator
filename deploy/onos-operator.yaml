@@ -41,8 +41,8 @@ spec:
                   type: object
                   required:
                   - name
-                  - version
-                  - data
+                  - revision
+                  - file
                   properties:
                     name:
                       type: string
@@ -50,8 +50,12 @@ spec:
                       type: string
                     revision:
                       type: string
-                    data:
+                    file:
                       type: string
+              files:
+                type: object
+                additionalProperties:
+                  type: string
           status:
             type: object
             properties:

@@ -129,18 +129,12 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		}
 
 		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Name, model.Namespace, model.Name)
-		files := make(map[string]string)
-		for _, module := range model.Spec.Modules {
-			name := fmt.Sprintf("%s-%s.yang", module.Name, module.Revision)
-			files[name] = module.Data
-		}
-
 		cm = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      model.Name,
 				Namespace: model.Namespace,
 			},
-			Data: files,
+			Data: model.Spec.Files,
 		}
 		if err := controllerutil.SetOwnerReference(model, cm, r.scheme); err != nil {
 			log.Warnf("Failed to set ConfigMap '%s' owner Model '%s/%s': %s", model.Name, model.Namespace, model.Name, err)
@@ -231,8 +225,8 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 					modules = append(modules, &configmodel.ConfigModule{
 						Name:         module.Name,
 						Organization: module.Organization,
-						Version:      module.Revision,
-						Data:         []byte(module.Data),
+						Revision:     module.Revision,
+						File:         module.File,
 					})
 				}
 

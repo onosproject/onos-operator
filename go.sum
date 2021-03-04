@@ -263,6 +263,8 @@ github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/pty v1.1.5/go.mod h1:9r2w37qlBe7rQ6e1fg1S/9xpWHSnaqNdHD3WcMdbPDA=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/kuujo/onos-config-model v0.0.2-0.20210304022247-b91c255526c3 h1:8JjXCPLAuEwvEObW4BEnnmOMFMFNJDCnLmfqY5FTUrQ=
+github.com/kuujo/onos-config-model v0.0.2-0.20210304022247-b91c255526c3/go.mod h1:laYWqKx328pOHB2TWMZzXrZF6OFakuIsc4TTBgjSisY=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
@@ -300,6 +302,8 @@ github.com/onosproject/onos-api/go v0.7.6 h1:NrIfyd4K4+zdnXtqd6ArhKEexDZhgzZ2LCG
 github.com/onosproject/onos-api/go v0.7.6/go.mod h1:Has28v1hruZLUxY1E5cCZq76UHXJZLbh62h1W8KQztQ=
 github.com/onosproject/onos-config-model v0.0.1 h1:bI7KS5oDoDCkWEGWOCtZOBb1yEntnct9IceXjnzc+RU=
 github.com/onosproject/onos-config-model v0.0.1/go.mod h1:p5psRluBlT72qy6UYjm7driI6OhFIyeABd7LItefCfo=
+github.com/onosproject/onos-config-model v0.1.2 h1:cOHmMGpBzc9VGyqMX+aI4HHACW8cjgv6cEMNJth1GNg=
+github.com/onosproject/onos-config-model v0.1.2/go.mod h1:laYWqKx328pOHB2TWMZzXrZF6OFakuIsc4TTBgjSisY=
 github.com/onosproject/onos-lib-go v0.7.3 h1:Ya+PosD8MkNNCPR4fs9j/f5gGCV7Y1yFyZZ9e4aX3ig=
 github.com/onosproject/onos-lib-go v0.7.3/go.mod h1:ttkK+fV2CULZFHiq6FBZ69i7/Nymi1Wow1DNy0Ik/2o=
 github.com/onsi/ginkgo v0.0.0-20170829012221-11459a886d9c/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
