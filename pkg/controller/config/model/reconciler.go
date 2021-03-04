@@ -235,6 +235,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 						Name:    model.Spec.Plugin.Type,
 						Version: model.Spec.Plugin.Version,
 						Modules: modules,
+						Files:   model.Spec.Files,
 					},
 				}
 				if _, err := client.PushModel(context.TODO(), request); err != nil {

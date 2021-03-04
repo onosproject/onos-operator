@@ -21,6 +21,7 @@ import (
 	"github.com/rogpeppe/go-internal/module"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
@@ -202,9 +203,10 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 
 	// Add the registry sidecar container
 	container := corev1.Container{
-		Name:  "model-registry",
-		Image: image,
-		Args:  args,
+		Name:            "model-registry",
+		Image:           image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Args:            args,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      registryVolumeName,
@@ -303,12 +305,12 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 
 	// Add file arguments
 	for name := range model.Spec.Files {
-		args = append(args, "--file", name)
+		args = append(args, "--file", filepath.Join(modelPath, name))
 	}
 
 	// Add module arguments
 	for _, module := range model.Spec.Modules {
-		args = append(args, "--module", fmt.Sprintf("%s@%s=%s/%s", module.Name, module.Revision, modelPath, module.File))
+		args = append(args, "--module", fmt.Sprintf("%s@%s=%s", module.Name, module.Revision, module.File))
 	}
 
 	var tags []string
@@ -319,9 +321,10 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 
 	// Add the compiler init container
 	container := corev1.Container{
-		Name:  fmt.Sprintf("%s-%s-compiler", strings.ToLower(model.Spec.Plugin.Type), strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
-		Image: image,
-		Args:  args,
+		Name:            fmt.Sprintf("%s-%s-compiler", strings.ToLower(model.Spec.Plugin.Type), strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
+		Image:           image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Args:            args,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      model.Name,

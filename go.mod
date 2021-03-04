@@ -14,4 +14,5 @@ require (
 	k8s.io/client-go v0.17.3
 	sigs.k8s.io/controller-runtime v0.5.2
 )
-replace github.com/onosproject/onos-config-model => github.com/kuujo/onos-config-model v0.0.2-0.20210304022247-b91c255526c3
+
+replace github.com/onosproject/onos-config-model => github.com/kuujo/onos-config-model v0.0.2-0.20210304064049-85862e92ff2a
