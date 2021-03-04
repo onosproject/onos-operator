@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	configv1beta1 "github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
+	"github.com/onosproject/onos-operator/pkg/controller/config/util"
 	"github.com/rogpeppe/go-internal/module"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -305,12 +306,12 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 
 	// Add file arguments
 	for name := range model.Spec.Files {
-		args = append(args, "--file", filepath.Join(modelPath, strings.ReplaceAll(name, "@", "-")))
+		args = append(args, "--file", filepath.Join(modelPath, util.NormalizeFileName(name)))
 	}
 
 	// Add module arguments
 	for _, module := range model.Spec.Modules {
-		args = append(args, "--module", fmt.Sprintf("%s@%s=%s", module.Name, module.Revision, strings.ReplaceAll(module.File, "@", "-")))
+		args = append(args, "--module", fmt.Sprintf("%s@%s=%s", module.Name, module.Revision, util.NormalizeFileName(module.File)))
 	}
 
 	var tags []string

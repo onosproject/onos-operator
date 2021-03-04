@@ -21,6 +21,7 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	"github.com/onosproject/onos-operator/pkg/controller/config/registry"
+	"github.com/onosproject/onos-operator/pkg/controller/config/util"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -36,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strings"
 )
 
 var log = logging.GetLogger("controller", "config", "model")
@@ -132,7 +132,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Name, model.Namespace, model.Name)
 		files := make(map[string]string)
 		for name, data := range model.Spec.Files {
-			files[strings.ReplaceAll(name, "@", "-")] = data
+			files[util.NormalizeFileName(name)] = data
 		}
 		cm = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -231,13 +231,13 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 						Name:         module.Name,
 						Organization: module.Organization,
 						Revision:     module.Revision,
-						File:         strings.ReplaceAll(module.File, "@", "-"),
+						File:         util.NormalizeFileName(module.File),
 					})
 				}
 
 				files := make(map[string]string)
 				for name, data := range model.Spec.Files {
-					files[strings.ReplaceAll(name, "@", "-")] = data
+					files[util.NormalizeFileName(name)] = data
 				}
 
 				request := &configmodel.PushModelRequest{
