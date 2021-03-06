@@ -18,14 +18,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/onosproject/onos-config-model/api/onos/configmodel"
+	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
 	"github.com/onosproject/onos-operator/pkg/controller/config/registry"
 	"github.com/onosproject/onos-operator/pkg/controller/config/util"
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -101,7 +103,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	model := &v1beta1.Model{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, model)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -125,7 +127,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		Namespace: model.Namespace,
 	}
 	if err := r.client.Get(context.Background(), cmName, cm); err != nil {
-		if !errors.IsNotFound(err) {
+		if !k8serrors.IsNotFound(err) {
 			return reconcile.Result{}, err
 		}
 
@@ -178,25 +180,25 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 	// Install the model to each registry
 	for _, pod := range pods.Items {
 		if pod.Annotations[registry.RegistryInjectStatusAnnotation] == registry.RegistryInjectStatusInjected {
-			var index int
-			var status *v1beta1.RegistryStatus
+			var podIndex int
+			var podStatus *v1beta1.RegistryStatus
 			var foundStatus v1beta1.RegistryStatus
 			for i, reg := range model.Status.RegistryStatuses {
 				if reg.PodName == pod.Name {
-					index = i
+					podIndex = i
 					foundStatus = reg
-					status = &foundStatus
+					podStatus = &foundStatus
 					break
 				}
 			}
 
-			if status == nil {
+			if podStatus == nil {
 				log.Debugf("Initializing Model '%s/%s' status for Pod '%s'", model.Namespace, model.Name, pod.Name)
-				status = &v1beta1.RegistryStatus{
+				podStatus = &v1beta1.RegistryStatus{
 					PodName: pod.Name,
 					Phase:   v1beta1.ModelPending,
 				}
-				model.Status.RegistryStatuses = append(model.Status.RegistryStatuses, *status)
+				model.Status.RegistryStatuses = append(model.Status.RegistryStatuses, *podStatus)
 				if err := r.client.Status().Update(context.TODO(), model); err != nil {
 					log.Warnf("Failed to update status for Model '%s/%s': %s", model.Namespace, model.Name, err)
 					return reconcile.Result{}, err
@@ -204,11 +206,11 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 				return reconcile.Result{}, nil
 			}
 
-			switch status.Phase {
+			switch podStatus.Phase {
 			case v1beta1.ModelPending:
 				if pod.Status.PodIP != "" {
 					log.Debugf("Installing Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
-					model.Status.RegistryStatuses[index] = v1beta1.RegistryStatus{
+					model.Status.RegistryStatuses[podIndex] = v1beta1.RegistryStatus{
 						PodName: pod.Name,
 						Phase:   v1beta1.ModelInstalling,
 					}
@@ -248,13 +250,19 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 						Files:   files,
 					},
 				}
-				if _, err := client.PushModel(context.TODO(), request); err != nil {
-					log.Errorf("PushModel failed for Model '%s/%s': %s", model.Namespace, model.Name, err.Error())
-					return reconcile.Result{}, err
+				_, err = client.PushModel(context.TODO(), request)
+				if err != nil {
+					errStatus, _ := status.FromError(err)
+					if !errors.IsAlreadyExists(errors.FromStatus(errStatus)) {
+						log.Errorf("PushModel failed for Model '%s/%s': %s", model.Namespace, model.Name, err.Error())
+						return reconcile.Result{}, err
+					}
+					log.Debugf("Model '%s/%s' is already installed in Pod '%s' registry", model.Namespace, model.Name, pod.Name)
+				} else {
+					log.Debugf("Installed Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
 				}
-				log.Debugf("Installed Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
 
-				model.Status.RegistryStatuses[index] = v1beta1.RegistryStatus{
+				model.Status.RegistryStatuses[podIndex] = v1beta1.RegistryStatus{
 					PodName: pod.Name,
 					Phase:   v1beta1.ModelInstalled,
 				}
@@ -269,21 +277,21 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 	}
 
 	// Update the status for deleted pods
-	for i, status := range model.Status.RegistryStatuses {
+	for i, podStatus := range model.Status.RegistryStatuses {
 		pod := &corev1.Pod{}
 		podName := types.NamespacedName{
 			Namespace: model.Namespace,
-			Name:      status.PodName,
+			Name:      podStatus.PodName,
 		}
-		if err := r.client.Get(context.TODO(), podName, pod); err != nil && errors.IsNotFound(err) {
+		if err := r.client.Get(context.TODO(), podName, pod); err != nil && k8serrors.IsNotFound(err) {
 			log.Debugf("Forgetting Model '%s/%s' status for Pod '%s'", model.Namespace, model.Name, pod.Name)
-			statuses := make([]v1beta1.RegistryStatus, 0, len(model.Status.RegistryStatuses)-1)
-			for j, status := range model.Status.RegistryStatuses {
+			podStatuses := make([]v1beta1.RegistryStatus, 0, len(model.Status.RegistryStatuses)-1)
+			for j, s := range model.Status.RegistryStatuses {
 				if i != j {
-					statuses = append(statuses, status)
+					podStatuses = append(podStatuses, s)
 				}
 			}
-			model.Status.RegistryStatuses = statuses
+			model.Status.RegistryStatuses = podStatuses
 			if err := r.client.Status().Update(context.TODO(), model); err != nil {
 				log.Warnf("Failed to update status for Model '%s/%s': %s", model.Namespace, model.Name, err)
 				return reconcile.Result{}, err
@@ -329,8 +337,13 @@ func (r *Reconciler) reconcileDelete(model *v1beta1.Model) (reconcile.Result, er
 				Name:    model.Spec.Plugin.Type,
 				Version: model.Spec.Plugin.Version,
 			}
-			if _, err := client.DeleteModel(context.TODO(), request); err != nil {
-				return reconcile.Result{}, err
+			_, err = client.DeleteModel(context.TODO(), request)
+			if err != nil {
+				errStatus, _ := status.FromError(err)
+				if !errors.IsNotFound(errors.FromStatus(errStatus)) {
+					log.Errorf("Failed to delete Model '%s/%s' from Pod '%s': %s", model.Namespace, model.Name, pod.Name, err.Error())
+					return reconcile.Result{}, err
+				}
 			}
 		}
 	}
