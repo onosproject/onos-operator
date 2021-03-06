@@ -46,11 +46,13 @@ const (
 	buildPath          = "/etc/onos/build"
 	moduleVolumeName   = "plugin-module"
 	registryVolumeName = "model-registry"
-	cacheVolumeName    = "plugin-cache"
+	pluginsVolumeName  = "plugin-cache"
+	goCacheVolumeName  = "mod-cache"
 	defaultGoModTarget = "github.com/onosproject/onos-config"
 	registryPath       = "/etc/onos/registry"
 	modulePath         = "/etc/onos/mod"
-	cachePath          = "/etc/onos/plugins"
+	pluginsPath        = "/etc/onos/plugins"
+	goCachePath        = "/go/pkg/mod/cache"
 )
 
 func newInjector(client client.Client, namespace string) *Injector {
@@ -121,6 +123,15 @@ func (i *Injector) injectInit(pod *corev1.Pod) error {
 	}
 	pod.Spec.Volumes = append(pod.Spec.Volumes, moduleVolume)
 
+	// Add a module cache volume to the pod
+	goCacheVolume := corev1.Volume{
+		Name: goCacheVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, goCacheVolume)
+
 	args := []string{
 		"--mod-path",
 		modulePath,
@@ -150,6 +161,10 @@ func (i *Injector) injectInit(pod *corev1.Pod) error {
 			{
 				Name:      moduleVolumeName,
 				MountPath: modulePath,
+			},
+			{
+				Name:      goCacheVolumeName,
+				MountPath: goCachePath,
 			},
 		},
 	}
@@ -202,12 +217,12 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 	var cacheVolume corev1.Volume
 	if registry.Spec.Cache.Volume != nil {
 		cacheVolume = corev1.Volume{
-			Name:         cacheVolumeName,
+			Name:         pluginsVolumeName,
 			VolumeSource: registry.Spec.Cache.Volume.VolumeSource,
 		}
 	} else {
 		cacheVolume = corev1.Volume{
-			Name: cacheVolumeName,
+			Name: pluginsVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -226,8 +241,8 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 			MountPath: registryPath,
 		})
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      cacheVolumeName,
-			MountPath: cachePath,
+			Name:      pluginsVolumeName,
+			MountPath: pluginsPath,
 		})
 		pod.Spec.Containers[j] = container
 	}
@@ -240,7 +255,7 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 		"--registry-path",
 		registryPath,
 		"--cache-path",
-		cachePath,
+		pluginsPath,
 	}
 
 	if modTarget != "" {
@@ -277,12 +292,16 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 				MountPath: modulePath,
 			},
 			{
+				Name:      goCacheVolumeName,
+				MountPath: goCachePath,
+			},
+			{
 				Name:      registryVolumeName,
 				MountPath: registryPath,
 			},
 			{
-				Name:      cacheVolumeName,
-				MountPath: cachePath,
+				Name:      pluginsVolumeName,
+				MountPath: pluginsPath,
 			},
 		},
 	}
@@ -352,7 +371,7 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 		"--build-path",
 		buildPath,
 		"--cache-path",
-		cachePath,
+		pluginsPath,
 	}
 
 	if modTarget != "" {
@@ -395,8 +414,12 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 				MountPath: modulePath,
 			},
 			{
-				Name:      cacheVolumeName,
-				MountPath: cachePath,
+				Name:      goCacheVolumeName,
+				MountPath: goCachePath,
+			},
+			{
+				Name:      pluginsVolumeName,
+				MountPath: pluginsPath,
 			},
 		},
 	}
