@@ -22,6 +22,7 @@ import (
 	"github.com/rogpeppe/go-internal/module"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
@@ -262,6 +263,14 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 		Image:           image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Args:            args,
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(5151),
+				},
+			},
+			PeriodSeconds: 1,
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      moduleVolumeName,
@@ -342,8 +351,6 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 		modulePath,
 		"--build-path",
 		buildPath,
-		"--registry-path",
-		registryPath,
 		"--cache-path",
 		cachePath,
 	}
@@ -386,10 +393,6 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 			{
 				Name:      moduleVolumeName,
 				MountPath: modulePath,
-			},
-			{
-				Name:      registryVolumeName,
-				MountPath: registryPath,
 			},
 			{
 				Name:      cacheVolumeName,
