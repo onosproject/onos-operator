@@ -39,11 +39,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"time"
 )
 
 var log = logging.GetLogger("controller", "config", "model")
 
 const configFinalizer = "config"
+const retryDuration = time.Second
 
 // Add creates a new Database controller and adds it to the Manager. The Manager will set fields on the
 // controller and Start it when the Manager is Started.
@@ -178,6 +180,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 	}
 
 	// Install the model to each registry
+	requeue := false
 	for _, pod := range pods.Items {
 		if pod.Annotations[registry.RegistryInjectStatusAnnotation] == registry.RegistryInjectStatusInjected {
 			var podIndex int
@@ -209,6 +212,16 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			switch podStatus.Phase {
 			case v1beta1.ModelPending:
 				if pod.Status.PodIP != "" {
+					ready := true
+					for _, containerStatus := range pod.Status.ContainerStatuses {
+						if containerStatus.Name == "model-registry" && !containerStatus.Ready {
+							ready = false
+						}
+					}
+					if !ready {
+						requeue = true
+						continue
+					}
 					log.Debugf("Installing Model '%s/%s' into Pod '%s' registry", model.Namespace, model.Name, pod.Name)
 					model.Status.RegistryStatuses[podIndex] = v1beta1.RegistryStatus{
 						PodName: pod.Name,
@@ -221,6 +234,16 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 					return reconcile.Result{}, nil
 				}
 			case v1beta1.ModelInstalling:
+				ready := true
+				for _, containerStatus := range pod.Status.ContainerStatuses {
+					if containerStatus.Name == "model-registry" && !containerStatus.Ready {
+						ready = false
+					}
+				}
+				if !ready {
+					requeue = true
+					continue
+				}
 				conn, err := grpc.ConnectAddress(fmt.Sprintf("%s:5151", pod.Status.PodIP))
 				if err != nil {
 					return reconcile.Result{}, err
@@ -298,6 +321,10 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 			}
 			return reconcile.Result{}, nil
 		}
+	}
+
+	if requeue {
+		return reconcile.Result{RequeueAfter: retryDuration}, nil
 	}
 	return reconcile.Result{}, nil
 }

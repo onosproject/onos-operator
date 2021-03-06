@@ -22,6 +22,7 @@ import (
 	"github.com/rogpeppe/go-internal/module"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
@@ -34,10 +35,6 @@ const (
 	RegistryInjectStatusAnnotation = "registry.config.onosproject.org/inject-status"
 	// RegistryInjectStatusInjected is an annotation value indicating the registry has been injected
 	RegistryInjectStatusInjected = "injected"
-	// RegistryPathAnnotation is an annotation indicating the path at which to mount the registry
-	RegistryPathAnnotation = "registry.config.onosproject.org/path"
-	// CachePathAnnotation is an annotation indicating the path at which to mount the cache
-	CachePathAnnotation = "cache.config.onosproject.org/path"
 	// CompilerVersionAnnotation is an annotation indicating the model API version
 	CompilerVersionAnnotation = "compiler.config.onosproject.org/version"
 	// CompilerTargetAnnotation is an annotation indicating the Go module for which to compile a model
@@ -45,13 +42,17 @@ const (
 )
 
 const (
-	modelPath           = "/etc/onos/models"
-	buildPath           = "/build"
-	registryVolumeName  = "model-registry"
-	cacheVolumeName     = "plugin-cache"
-	defaultGoModTarget  = "github.com/onosproject/onos-config"
-	defaultRegistryPath = "/etc/onos/plugins"
-	defaultCachePath    = "/etc/onos/cache"
+	modelPath          = "/etc/onos/model"
+	buildPath          = "/etc/onos/build"
+	moduleVolumeName   = "plugin-module"
+	registryVolumeName = "model-registry"
+	pluginsVolumeName  = "plugin-cache"
+	goCacheVolumeName  = "mod-cache"
+	defaultGoModTarget = "github.com/onosproject/onos-config"
+	registryPath       = "/etc/onos/registry"
+	modulePath         = "/etc/onos/mod"
+	pluginsPath        = "/etc/onos/plugins"
+	goCachePath        = "/go/pkg/mod/cache"
 )
 
 func newInjector(client client.Client, namespace string) *Injector {
@@ -82,6 +83,9 @@ func (i *Injector) inject(ctx context.Context, pod *corev1.Pod) (bool, error) {
 		return false, nil
 	}
 
+	if err := i.injectInit(pod); err != nil {
+		return true, err
+	}
 	if err := i.injectRegistry(ctx, pod); err != nil {
 		return true, err
 	}
@@ -94,16 +98,84 @@ func (i *Injector) inject(ctx context.Context, pod *corev1.Pod) (bool, error) {
 	return true, nil
 }
 
+func (i *Injector) injectInit(pod *corev1.Pod) error {
+	compilerVersion, err := i.getCompilerVersion(pod)
+	if err != nil {
+		return err
+	}
+	modTarget, err := i.getModTarget(pod)
+	if err != nil {
+		return err
+	}
+	modReplace, err := i.getModReplace(pod)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Injecting module '%s' into Pod '%s/%s'", modTarget, pod.Name, pod.Namespace)
+
+	// Add a module volume to the pod
+	moduleVolume := corev1.Volume{
+		Name: moduleVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, moduleVolume)
+
+	// Add a module cache volume to the pod
+	goCacheVolume := corev1.Volume{
+		Name: goCacheVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, goCacheVolume)
+
+	args := []string{
+		"--mod-path",
+		modulePath,
+	}
+
+	if modTarget != "" {
+		args = append(args, "--mod-target", modTarget)
+	}
+
+	if modReplace != "" {
+		args = append(args, "--mod-replace", modReplace)
+	}
+
+	var tags []string
+	if compilerVersion != "" {
+		tags = append(tags, compilerVersion)
+	}
+	image := fmt.Sprintf("onosproject/config-model-init:%s", strings.Join(tags, "-"))
+
+	// Add the compiler init container
+	container := corev1.Container{
+		Name:            "module",
+		Image:           image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Args:            args,
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      moduleVolumeName,
+				MountPath: modulePath,
+			},
+			{
+				Name:      goCacheVolumeName,
+				MountPath: goCachePath,
+			},
+		},
+	}
+
+	// If the model is present, inject the init container into the pod
+	pod.Spec.InitContainers = append(pod.Spec.InitContainers, container)
+	return nil
+}
+
 func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 	registryName, err := i.getRegistryName(pod)
-	if err != nil {
-		return err
-	}
-	registryPath, err := i.getRegistryPath(pod)
-	if err != nil {
-		return err
-	}
-	cachePath, err := i.getCachePath(pod)
 	if err != nil {
 		return err
 	}
@@ -145,12 +217,12 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 	var cacheVolume corev1.Volume
 	if registry.Spec.Cache.Volume != nil {
 		cacheVolume = corev1.Volume{
-			Name:         cacheVolumeName,
+			Name:         pluginsVolumeName,
 			VolumeSource: registry.Spec.Cache.Volume.VolumeSource,
 		}
 	} else {
 		cacheVolume = corev1.Volume{
-			Name: cacheVolumeName,
+			Name: pluginsVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -160,40 +232,38 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 
 	// Mount the registry volume to existing containers
 	for j, container := range pod.Spec.Containers {
-		container.Env = append(container.Env, corev1.EnvVar{
-			Name:  "CONFIG_MODEL_REGISTRY",
-			Value: registryPath,
-		})
-		container.Env = append(container.Env, corev1.EnvVar{
-			Name:  "CONFIG_MODULE_TARGET",
-			Value: modTarget,
-		})
-		container.Env = append(container.Env, corev1.EnvVar{
-			Name:  "CONFIG_MODULE_REPLACE",
-			Value: modReplace,
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      moduleVolumeName,
+			MountPath: modulePath,
 		})
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      registryVolumeName,
 			MountPath: registryPath,
 		})
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      pluginsVolumeName,
+			MountPath: pluginsPath,
+		})
 		pod.Spec.Containers[j] = container
 	}
 
 	args := []string{
+		"--mod-path",
+		modulePath,
 		"--build-path",
 		buildPath,
 		"--registry-path",
 		registryPath,
-		//"--cache-path",
-		//cachePath,
+		"--cache-path",
+		pluginsPath,
 	}
 
 	if modTarget != "" {
-		args = append(args, "--target", modTarget)
+		args = append(args, "--mod-target", modTarget)
 	}
 
 	if modReplace != "" {
-		args = append(args, "--replace", modReplace)
+		args = append(args, "--mod-replace", modReplace)
 	}
 
 	var tags []string
@@ -208,14 +278,30 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 		Image:           image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Args:            args,
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(5151),
+				},
+			},
+			PeriodSeconds: 1,
+		},
 		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      moduleVolumeName,
+				MountPath: modulePath,
+			},
+			{
+				Name:      goCacheVolumeName,
+				MountPath: goCachePath,
+			},
 			{
 				Name:      registryVolumeName,
 				MountPath: registryPath,
 			},
 			{
-				Name:      cacheVolumeName,
-				MountPath: cachePath,
+				Name:      pluginsVolumeName,
+				MountPath: pluginsPath,
 			},
 		},
 	}
@@ -244,14 +330,6 @@ func (i *Injector) injectCompilers(ctx context.Context, pod *corev1.Pod) error {
 }
 
 func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) error {
-	registryPath, err := i.getRegistryPath(pod)
-	if err != nil {
-		return err
-	}
-	cachePath, err := i.getCachePath(pod)
-	if err != nil {
-		return err
-	}
 	compilerVersion, err := i.getCompilerVersion(pod)
 	if err != nil {
 		return err
@@ -288,20 +366,20 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 		model.Spec.Plugin.Type,
 		"--version",
 		model.Spec.Plugin.Version,
+		"--mod-path",
+		modulePath,
 		"--build-path",
 		buildPath,
-		"--output-path",
-		registryPath,
-		//"--cache-path",
-		//cachePath,
+		"--cache-path",
+		pluginsPath,
 	}
 
 	if modTarget != "" {
-		args = append(args, "--target", modTarget)
+		args = append(args, "--mod-target", modTarget)
 	}
 
 	if modReplace != "" {
-		args = append(args, "--replace", modReplace)
+		args = append(args, "--mod-replace", modReplace)
 	}
 
 	// Add file arguments
@@ -332,12 +410,16 @@ func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) er
 				MountPath: modelPath,
 			},
 			{
-				Name:      registryVolumeName,
-				MountPath: registryPath,
+				Name:      moduleVolumeName,
+				MountPath: modulePath,
 			},
 			{
-				Name:      cacheVolumeName,
-				MountPath: cachePath,
+				Name:      goCacheVolumeName,
+				MountPath: goCachePath,
+			},
+			{
+				Name:      pluginsVolumeName,
+				MountPath: pluginsPath,
 			},
 		},
 	}
@@ -390,23 +472,7 @@ func (i *Injector) getModReplace(pod *corev1.Pod) (string, error) {
 	return compilerTarget, nil
 }
 
-func (i *Injector) getRegistryPath(pod *corev1.Pod) (string, error) {
-	path, ok := pod.Annotations[RegistryPathAnnotation]
-	if !ok {
-		return defaultRegistryPath, nil
-	}
-	return path, nil
-}
-
 func (i *Injector) getRegistryName(pod *corev1.Pod) (string, error) {
 	registry := pod.Annotations[RegistryInjectAnnotation]
 	return registry, nil
-}
-
-func (i *Injector) getCachePath(pod *corev1.Pod) (string, error) {
-	path, ok := pod.Annotations[CachePathAnnotation]
-	if !ok {
-		return defaultCachePath, nil
-	}
-	return path, nil
 }
