@@ -80,6 +80,9 @@ func (i *Injector) inject(ctx context.Context, pod *corev1.Pod) (bool, error) {
 		return false, nil
 	}
 
+	if err := i.injectInit(pod); err != nil {
+		return true, err
+	}
 	if err := i.injectRegistry(ctx, pod); err != nil {
 		return true, err
 	}
@@ -87,6 +90,82 @@ func (i *Injector) inject(ctx context.Context, pod *corev1.Pod) (bool, error) {
 	// Set the registry injection status to injected
 	pod.Annotations[RegistryInjectStatusAnnotation] = RegistryInjectStatusInjected
 	return true, nil
+}
+
+func (i *Injector) injectInit(pod *corev1.Pod) error {
+	compilerVersion, err := i.getCompilerVersion(pod)
+	if err != nil {
+		return err
+	}
+	modTarget, err := i.getModTarget(pod)
+	if err != nil {
+		return err
+	}
+	modReplace, err := i.getModReplace(pod)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Injecting module '%s' into Pod '%s/%s'", modTarget, pod.Name, pod.Namespace)
+
+	// Add a module volume to the pod
+	moduleVolume := corev1.Volume{
+		Name: moduleVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, moduleVolume)
+
+	// Add a module cache volume to the pod
+	goCacheVolume := corev1.Volume{
+		Name: goCacheVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, goCacheVolume)
+
+	args := []string{
+		"--mod-path",
+		modulePath,
+	}
+
+	if modTarget != "" {
+		args = append(args, "--mod-target", modTarget)
+	}
+
+	if modReplace != "" {
+		args = append(args, "--mod-replace", modReplace)
+	}
+
+	var tags []string
+	if compilerVersion != "" {
+		tags = append(tags, compilerVersion)
+	}
+	image := fmt.Sprintf("onosproject/config-model-init:%s", strings.Join(tags, "-"))
+
+	// Add the compiler init container
+	container := corev1.Container{
+		Name:            "model-registry-init",
+		Image:           image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Args:            args,
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      moduleVolumeName,
+				MountPath: modulePath,
+			},
+			{
+				Name:      goCacheVolumeName,
+				MountPath: goCachePath,
+			},
+		},
+	}
+
+	// If the model is present, inject the init container into the pod
+	pod.Spec.InitContainers = append(pod.Spec.InitContainers, container)
+	return nil
 }
 
 func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {

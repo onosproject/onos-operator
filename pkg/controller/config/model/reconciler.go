@@ -265,7 +265,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 	}
 
 	// Update the status for deleted pods
-	for i, podStatus := range model.Status.RegistryStatuses {
+	for _, podStatus := range model.Status.RegistryStatuses {
 		pod := &corev1.Pod{}
 		podName := types.NamespacedName{
 			Namespace: model.Namespace,
@@ -274,8 +274,8 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		if err := r.client.Get(context.TODO(), podName, pod); err != nil && k8serrors.IsNotFound(err) {
 			log.Debugf("Forgetting Model '%s/%s' status for Pod '%s'", model.Namespace, model.Name, pod.Name)
 			podStatuses := make([]v1beta1.RegistryStatus, 0, len(model.Status.RegistryStatuses)-1)
-			for j, s := range model.Status.RegistryStatuses {
-				if i != j {
+			for _, s := range model.Status.RegistryStatuses {
+				if s.PodName != pod.Name {
 					podStatuses = append(podStatuses, s)
 				}
 			}
