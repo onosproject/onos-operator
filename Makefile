@@ -11,13 +11,16 @@ build:
 	go build -o build/_output/config-operator ./cmd/config-operator
 	go build -o build/_output/topo-operator ./cmd/topo-operator
 
+version_check: # @HELP verify that release versions are correct
+	./build/bin/check-versions
+
 test: # @HELP run the unit tests and source code validation
-test: build deps license_check linters
+test: build deps license_check linters version_check
 	go test github.com/onosproject/onos-operator/pkg/...
 	go test github.com/onosproject/onos-operator/cmd/...
 
 jenkins-test:  # @HELP run the unit tests and source code validation producing a junit style report for Jenkins
-jenkins-test: build-tools deps license_check linters
+jenkins-test: build-tools deps license_check linters version_check
 	TEST_PACKAGES=github.com/onosproject/onos-operator/pkg/... ./../build-tools/build/jenkins/make-unit
 
 coverage: # @HELP generate unit test coverage data
