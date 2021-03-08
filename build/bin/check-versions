@@ -26,7 +26,7 @@ then
 fi
 
 # make sure that the release version matches the tags in the deployment
-echo "Non-dev version $VERSION - checking image tags"
+echo "SEMVER version $VERSION - checking image tags"
 found=0
 found=$(grep image: ./deploy/onos-operator.yaml | grep "$VERSION"\$ | wc -l) || true
 if (( found == 3 ))
