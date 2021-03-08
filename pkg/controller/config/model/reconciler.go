@@ -28,13 +28,11 @@ import (
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -122,39 +120,6 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 }
 
 func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, error) {
-	// Create a ConfigMap to store the modules
-	cm := &corev1.ConfigMap{}
-	cmName := types.NamespacedName{
-		Name:      model.Name,
-		Namespace: model.Namespace,
-	}
-	if err := r.client.Get(context.Background(), cmName, cm); err != nil {
-		if !k8serrors.IsNotFound(err) {
-			return reconcile.Result{}, err
-		}
-
-		log.Debugf("Creating ConfigMap '%s' for Model '%s/%s'", model.Name, model.Namespace, model.Name)
-		files := make(map[string]string)
-		for name, data := range model.Spec.Files {
-			files[util.NormalizeFileName(name)] = data
-		}
-		cm = &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      model.Name,
-				Namespace: model.Namespace,
-			},
-			Data: files,
-		}
-		if err := controllerutil.SetOwnerReference(model, cm, r.scheme); err != nil {
-			log.Warnf("Failed to set ConfigMap '%s' owner Model '%s/%s': %s", model.Name, model.Namespace, model.Name, err)
-			return reconcile.Result{}, err
-		}
-		if err := r.client.Create(context.Background(), cm); err != nil {
-			log.Warnf("Failed to create ConfigMap '%s' for Model '%s/%s': %s", model.Name, model.Namespace, model.Name, err)
-			return reconcile.Result{}, err
-		}
-	}
-
 	// If the model does not define a plugin configuration, it doesn't need to be injected into any pods
 	if model.Spec.Plugin == nil {
 		return reconcile.Result{}, nil
@@ -300,7 +265,7 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 	}
 
 	// Update the status for deleted pods
-	for i, podStatus := range model.Status.RegistryStatuses {
+	for _, podStatus := range model.Status.RegistryStatuses {
 		pod := &corev1.Pod{}
 		podName := types.NamespacedName{
 			Namespace: model.Namespace,
@@ -309,8 +274,8 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 		if err := r.client.Get(context.TODO(), podName, pod); err != nil && k8serrors.IsNotFound(err) {
 			log.Debugf("Forgetting Model '%s/%s' status for Pod '%s'", model.Namespace, model.Name, pod.Name)
 			podStatuses := make([]v1beta1.RegistryStatus, 0, len(model.Status.RegistryStatuses)-1)
-			for j, s := range model.Status.RegistryStatuses {
-				if i != j {
+			for _, s := range model.Status.RegistryStatuses {
+				if s.PodName != pod.Name {
 					podStatuses = append(podStatuses, s)
 				}
 			}

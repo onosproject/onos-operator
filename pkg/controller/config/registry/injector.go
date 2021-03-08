@@ -18,12 +18,10 @@ import (
 	"context"
 	"fmt"
 	configv1beta1 "github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
-	"github.com/onosproject/onos-operator/pkg/controller/config/util"
 	"github.com/rogpeppe/go-internal/module"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
@@ -42,7 +40,6 @@ const (
 )
 
 const (
-	modelPath          = "/etc/onos/model"
 	buildPath          = "/etc/onos/build"
 	moduleVolumeName   = "plugin-module"
 	registryVolumeName = "model-registry"
@@ -87,9 +84,6 @@ func (i *Injector) inject(ctx context.Context, pod *corev1.Pod) (bool, error) {
 		return true, err
 	}
 	if err := i.injectRegistry(ctx, pod); err != nil {
-		return true, err
-	}
-	if err := i.injectCompilers(ctx, pod); err != nil {
 		return true, err
 	}
 
@@ -153,7 +147,7 @@ func (i *Injector) injectInit(pod *corev1.Pod) error {
 
 	// Add the compiler init container
 	container := corev1.Container{
-		Name:            "module",
+		Name:            "model-registry-init",
 		Image:           image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Args:            args,
@@ -308,124 +302,6 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 
 	// If the model is present, inject the init container into the pod
 	pod.Spec.Containers = append(pod.Spec.Containers, container)
-	return nil
-}
-
-func (i *Injector) injectCompilers(ctx context.Context, pod *corev1.Pod) error {
-	// Load existing models via init containers
-	modelList := &configv1beta1.ModelList{}
-	modelListOpts := &client.ListOptions{
-		Namespace: i.namespace,
-	}
-	if err := i.client.List(ctx, modelList, modelListOpts); err != nil {
-		return err
-	}
-
-	for _, model := range modelList.Items {
-		if err := i.injectCompiler(pod, model); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (i *Injector) injectCompiler(pod *corev1.Pod, model configv1beta1.Model) error {
-	compilerVersion, err := i.getCompilerVersion(pod)
-	if err != nil {
-		return err
-	}
-	modTarget, err := i.getModTarget(pod)
-	if err != nil {
-		return err
-	}
-	modReplace, err := i.getModReplace(pod)
-	if err != nil {
-		return err
-	}
-
-	if model.Spec.Plugin == nil {
-		return nil
-	}
-
-	log.Infof("Injecting model '%s' into Pod '%s/%s'", model.Name, pod.Name, pod.Namespace)
-
-	// Add the model volume to the pod
-	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-		Name: model.Name,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: model.Name,
-				},
-			},
-		},
-	})
-
-	args := []string{
-		"--name",
-		model.Spec.Plugin.Type,
-		"--version",
-		model.Spec.Plugin.Version,
-		"--mod-path",
-		modulePath,
-		"--build-path",
-		buildPath,
-		"--cache-path",
-		pluginsPath,
-	}
-
-	if modTarget != "" {
-		args = append(args, "--mod-target", modTarget)
-	}
-
-	if modReplace != "" {
-		args = append(args, "--mod-replace", modReplace)
-	}
-
-	// Add file arguments
-	for name := range model.Spec.Files {
-		args = append(args, "--file", filepath.Join(modelPath, util.NormalizeFileName(name)))
-	}
-
-	// Add module arguments
-	for _, module := range model.Spec.Modules {
-		args = append(args, "--module", fmt.Sprintf("%s@%s=%s", module.Name, module.Revision, util.NormalizeFileName(module.File)))
-	}
-
-	var tags []string
-	if compilerVersion != "" {
-		tags = append(tags, compilerVersion)
-	}
-	image := fmt.Sprintf("onosproject/config-model-compiler:%s", strings.Join(tags, "-"))
-
-	// Add the compiler init container
-	container := corev1.Container{
-		Name:            fmt.Sprintf("%s-%s-compiler", strings.ToLower(model.Spec.Plugin.Type), strings.ReplaceAll(model.Spec.Plugin.Version, ".", "-")),
-		Image:           image,
-		ImagePullPolicy: corev1.PullIfNotPresent,
-		Args:            args,
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      model.Name,
-				MountPath: modelPath,
-			},
-			{
-				Name:      moduleVolumeName,
-				MountPath: modulePath,
-			},
-			{
-				Name:      goCacheVolumeName,
-				MountPath: goCachePath,
-			},
-			{
-				Name:      pluginsVolumeName,
-				MountPath: pluginsPath,
-			},
-		},
-	}
-
-	// If the model is present, inject the init container into the pod
-	pod.Spec.InitContainers = append(pod.Spec.InitContainers, container)
 	return nil
 }
 
