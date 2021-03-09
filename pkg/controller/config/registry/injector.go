@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	configv1beta1 "github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
-	"github.com/rogpeppe/go-internal/module"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -44,12 +43,11 @@ const (
 	moduleVolumeName   = "plugin-module"
 	registryVolumeName = "model-registry"
 	pluginsVolumeName  = "plugin-cache"
-	goCacheVolumeName  = "mod-cache"
 	defaultGoModTarget = "github.com/onosproject/onos-config"
 	registryPath       = "/etc/onos/registry"
 	modulePath         = "/etc/onos/mod"
 	pluginsPath        = "/etc/onos/plugins"
-	goCachePath        = "/go/pkg/mod/cache"
+	modVersionSep      = "@"
 )
 
 func newInjector(client client.Client, namespace string) *Injector {
@@ -117,15 +115,6 @@ func (i *Injector) injectInit(pod *corev1.Pod) error {
 	}
 	pod.Spec.Volumes = append(pod.Spec.Volumes, moduleVolume)
 
-	// Add a module cache volume to the pod
-	goCacheVolume := corev1.Volume{
-		Name: goCacheVolumeName,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
-	pod.Spec.Volumes = append(pod.Spec.Volumes, goCacheVolume)
-
 	args := []string{
 		"--mod-path",
 		modulePath,
@@ -155,10 +144,6 @@ func (i *Injector) injectInit(pod *corev1.Pod) error {
 			{
 				Name:      moduleVolumeName,
 				MountPath: modulePath,
-			},
-			{
-				Name:      goCacheVolumeName,
-				MountPath: goCachePath,
 			},
 		},
 	}
@@ -286,10 +271,6 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 				MountPath: modulePath,
 			},
 			{
-				Name:      goCacheVolumeName,
-				MountPath: goCachePath,
-			},
-			{
 				Name:      registryVolumeName,
 				MountPath: registryPath,
 			},
@@ -326,7 +307,7 @@ func (i *Injector) getModTarget(pod *corev1.Pod) (string, error) {
 	if compilerTarget == "" {
 		return defaultGoModTarget, nil
 	}
-	path, _, _ := module.SplitPathVersion(compilerTarget)
+	path, _ := splitModPathVersion(compilerTarget)
 	if path != defaultGoModTarget {
 		return defaultGoModTarget, nil
 	}
@@ -341,7 +322,7 @@ func (i *Injector) getModReplace(pod *corev1.Pod) (string, error) {
 	if compilerTarget == "" {
 		return "", nil
 	}
-	path, _, _ := module.SplitPathVersion(compilerTarget)
+	path, _ := splitModPathVersion(compilerTarget)
 	if path == defaultGoModTarget {
 		return "", nil
 	}
@@ -351,4 +332,11 @@ func (i *Injector) getModReplace(pod *corev1.Pod) (string, error) {
 func (i *Injector) getRegistryName(pod *corev1.Pod) (string, error) {
 	registry := pod.Annotations[RegistryInjectAnnotation]
 	return registry, nil
+}
+
+func splitModPathVersion(mod string) (string, string) {
+	if i := strings.Index(mod, modVersionSep); i >= 0 {
+		return mod[:i], mod[i+1:]
+	}
+	return mod, ""
 }
