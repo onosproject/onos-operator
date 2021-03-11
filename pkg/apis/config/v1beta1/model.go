@@ -18,6 +18,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type GetStateMode string
+
+const (
+	GetStateNone                           GetStateMode = "GetStateNone"
+	GetStateOpState                        GetStateMode = "GetStateOpState"
+	GetStateExplicitRoPaths                GetStateMode = "GetStateExplicitRoPaths"
+	GetStateExplicitRoPathsExpandWildcards GetStateMode = "GetStateExplicitRoPathsExpandWildcards"
+)
+
 // ModelSpec is the k8s spec for a Model resource
 type ModelSpec struct {
 	Plugin  *Plugin           `json:"plugin,omitempty"`
@@ -27,8 +36,9 @@ type ModelSpec struct {
 
 // Plugin is the spec for a Model plugin
 type Plugin struct {
-	Type    string `json:"type,omitempty"`
-	Version string `json:"version,omitempty"`
+	Type         string       `json:"type,omitempty"`
+	Version      string       `json:"version,omitempty"`
+	GetStateMode GetStateMode `json:"getStateMode,omitempty"`
 }
 
 // Module defines a module

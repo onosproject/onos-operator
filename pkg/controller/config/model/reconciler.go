@@ -17,7 +17,7 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/onosproject/onos-config-model/api/onos/configmodel"
+	"github.com/onosproject/onos-api/go/onos/configmodel"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-operator/pkg/apis/config/v1beta1"
@@ -230,12 +230,25 @@ func (r *Reconciler) reconcileCreate(model *v1beta1.Model) (reconcile.Result, er
 					files[util.NormalizeFileName(name)] = data
 				}
 
+				var getStateMode configmodel.GetStateMode
+				switch model.Spec.Plugin.GetStateMode {
+				case v1beta1.GetStateNone:
+					getStateMode = configmodel.GetStateMode_NONE
+				case v1beta1.GetStateOpState:
+					getStateMode = configmodel.GetStateMode_OP_STATE
+				case v1beta1.GetStateExplicitRoPaths:
+					getStateMode = configmodel.GetStateMode_EXPLICIT_RO_PATHS
+				case v1beta1.GetStateExplicitRoPathsExpandWildcards:
+					getStateMode = configmodel.GetStateMode_EXPLICIT_RO_PATHS_EXPAND_WILDCARDS
+				}
+
 				request := &configmodel.PushModelRequest{
 					Model: &configmodel.ConfigModel{
-						Name:    model.Spec.Plugin.Type,
-						Version: model.Spec.Plugin.Version,
-						Modules: modules,
-						Files:   files,
+						Name:         model.Spec.Plugin.Type,
+						Version:      model.Spec.Plugin.Version,
+						GetStateMode: getStateMode,
+						Modules:      modules,
+						Files:        files,
 					},
 				}
 				_, err = client.PushModel(context.TODO(), request)
