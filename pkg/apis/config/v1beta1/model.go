@@ -18,6 +18,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// GetStateMode indicates the mode for reading state from a device
+type GetStateMode string
+
+const (
+	// GetStateNone - device type does not support Operational State at all
+	GetStateNone GetStateMode = "GetStateNone"
+	// GetStateOpState - device returns all its op state attributes by querying
+	// GetRequest_STATE and GetRequest_OPERATIONAL
+	GetStateOpState GetStateMode = "GetStateOpState"
+	// GetStateExplicitRoPaths - device returns all its op state attributes by querying
+	// exactly what the ReadOnly paths from YANG - wildcards are handled by device
+	GetStateExplicitRoPaths GetStateMode = "GetStateExplicitRoPaths"
+	// GetStateExplicitRoPathsExpandWildcards - where there are wildcards in the
+	// ReadOnly paths 2 calls have to be made - 1) to expand the wildcards in to
+	// real paths (since the device doesn't do it) and 2) to query those expanded
+	// wildcard paths - this is the Stratum 1.0.0 method
+	GetStateExplicitRoPathsExpandWildcards GetStateMode = "GetStateExplicitRoPathsExpandWildcards"
+)
+
 // ModelSpec is the k8s spec for a Model resource
 type ModelSpec struct {
 	Plugin  *Plugin           `json:"plugin,omitempty"`
@@ -27,8 +46,9 @@ type ModelSpec struct {
 
 // Plugin is the spec for a Model plugin
 type Plugin struct {
-	Type    string `json:"type,omitempty"`
-	Version string `json:"version,omitempty"`
+	Type         string       `json:"type,omitempty"`
+	Version      string       `json:"version,omitempty"`
+	GetStateMode GetStateMode `json:"getStateMode,omitempty"`
 }
 
 // Module defines a module
