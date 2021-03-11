@@ -18,12 +18,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// GetStateMode indicates the mode for reading state from a device
 type GetStateMode string
 
 const (
-	GetStateNone                           GetStateMode = "GetStateNone"
-	GetStateOpState                        GetStateMode = "GetStateOpState"
-	GetStateExplicitRoPaths                GetStateMode = "GetStateExplicitRoPaths"
+	// GetStateNone - device type does not support Operational State at all
+	GetStateNone GetStateMode = "GetStateNone"
+	// GetStateOpState - device returns all its op state attributes by querying
+	// GetRequest_STATE and GetRequest_OPERATIONAL
+	GetStateOpState GetStateMode = "GetStateOpState"
+	// GetStateExplicitRoPaths - device returns all its op state attributes by querying
+	// exactly what the ReadOnly paths from YANG - wildcards are handled by device
+	GetStateExplicitRoPaths GetStateMode = "GetStateExplicitRoPaths"
+	// GetStateExplicitRoPathsExpandWildcards - where there are wildcards in the
+	// ReadOnly paths 2 calls have to be made - 1) to expand the wildcards in to
+	// real paths (since the device doesn't do it) and 2) to query those expanded
+	// wildcard paths - this is the Stratum 1.0.0 method
 	GetStateExplicitRoPathsExpandWildcards GetStateMode = "GetStateExplicitRoPathsExpandWildcards"
 )
 
