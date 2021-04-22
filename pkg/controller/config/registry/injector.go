@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
@@ -61,6 +62,14 @@ func newInjector(client client.Client, namespace string) *Injector {
 type Injector struct {
 	client    client.Client
 	namespace string
+}
+
+func getGlobalRegistryPrefix() string {
+	globalImageRegistry := os.Getenv("GLOBAL_IMAGE_REGISTRY")
+	if globalImageRegistry != "" {
+		globalImageRegistry = globalImageRegistry + "/"
+	}
+	return globalImageRegistry
 }
 
 func (i *Injector) inject(ctx context.Context, pod *corev1.Pod) (bool, error) {
@@ -132,7 +141,8 @@ func (i *Injector) injectInit(pod *corev1.Pod) error {
 	if compilerVersion != "" {
 		tags = append(tags, compilerVersion)
 	}
-	image := fmt.Sprintf("onosproject/config-model-init:%s", strings.Join(tags, "-"))
+
+	image := fmt.Sprintf("%sonosproject/config-model-init:%s", getGlobalRegistryPrefix(), strings.Join(tags, "-"))
 
 	// Add the compiler init container
 	container := corev1.Container{
@@ -249,7 +259,7 @@ func (i *Injector) injectRegistry(ctx context.Context, pod *corev1.Pod) error {
 	if compilerVersion != "" {
 		tags = append(tags, compilerVersion)
 	}
-	image := fmt.Sprintf("onosproject/config-model-registry:%s", strings.Join(tags, "-"))
+	image := fmt.Sprintf("%sonosproject/config-model-registry:%s", getGlobalRegistryPrefix(), strings.Join(tags, "-"))
 
 	// Add the registry sidecar container
 	container := corev1.Container{
