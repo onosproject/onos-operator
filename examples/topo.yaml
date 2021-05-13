@@ -4,8 +4,9 @@ kind: Kind
 metadata:
   name: e2-node
 spec:
-  attributes:
-    foo: bar
+  aspects:
+    onos.example.ExampleKind:
+      foo: bar
 ---
 # A topology kind representing an E2 termination point
 apiVersion: topo.onosproject.org/v1beta1
@@ -13,8 +14,9 @@ kind: Kind
 metadata:
   name: e2-termination
 spec:
-  attributes:
-    foo: bar
+  aspects:
+    onos.example.ExampleKind:
+      foo: bar
 ---
 # A topology kind representing an E2 connection
 apiVersion: topo.onosproject.org/v1beta1
@@ -22,8 +24,9 @@ kind: Kind
 metadata:
   name: e2-connection
 spec:
-  attributes:
-    bar: baz
+  aspects:
+    onos.example.ExampleKind:
+      bar: baz
 ---
 # An entity representing an E2 termination point
 apiVersion: topo.onosproject.org/v1beta1
@@ -32,9 +35,10 @@ metadata:
   name: e2t-1
 spec:
   kind:
-    name: e2-termiation
-  attributes:
-    baz: foo
+    name: e2-termination
+  aspects:
+    onos.example.ExampleEntity:
+      baz: foo
 ---
 # An entity representing an E2 termination point
 apiVersion: topo.onosproject.org/v1beta1
@@ -43,9 +47,10 @@ metadata:
   name: e2t-2
 spec:
   kind:
-    name: e2-termiation
-  attributes:
-    baz: foo
+    name: e2-termination
+  aspects:
+    onos.example.ExampleEntity:
+      baz: foo
 ---
 # An entity representing an E2 node
 apiVersion: topo.onosproject.org/v1beta1
@@ -55,8 +60,9 @@ metadata:
 spec:
   kind:
     name: e2-node
-  attributes:
-    baz: foo
+  aspects:
+    onos.example.ExampleEntity:
+      baz: foo
 ---
 # A relation representing a connection between an E2 node and an E2 termination point
 apiVersion: topo.onosproject.org/v1beta1

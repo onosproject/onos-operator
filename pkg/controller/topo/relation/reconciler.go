@@ -16,6 +16,7 @@ package relation
 
 import (
 	"context"
+	prototypes "github.com/gogo/protobuf/types"
 	"github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
@@ -216,21 +217,28 @@ func (r *Reconciler) relationExists(relation *v1beta1.Relation, client topo.Topo
 }
 
 func (r *Reconciler) createRelation(relation *v1beta1.Relation, client topo.TopoClient) error {
-	request := &topo.CreateRequest{
-		Object: &topo.Object{
-			ID:   topo.ID(relation.Name),
-			Type: topo.Object_RELATION,
-			Obj: &topo.Object_Relation{
-				Relation: &topo.Relation{
-					KindID:      topo.ID(relation.Spec.Kind.Name),
-					SrcEntityID: topo.ID(relation.Spec.Source.Name),
-					TgtEntityID: topo.ID(relation.Spec.Target.Name),
-				},
+	object := &topo.Object{
+		ID:   topo.ID(relation.Name),
+		Type: topo.Object_RELATION,
+		Obj: &topo.Object_Relation{
+			Relation: &topo.Relation{
+				KindID:      topo.ID(relation.Spec.Kind.Name),
+				SrcEntityID: topo.ID(relation.Spec.Source.Name),
+				TgtEntityID: topo.ID(relation.Spec.Target.Name),
 			},
-			Attributes: relation.Spec.Attributes,
 		},
+		Aspects: make(map[string]*prototypes.Any),
+	}
+	for key, value := range relation.Spec.Aspects {
+		err := object.SetAspectBytes(key, value.Raw)
+		if err != nil {
+			return err
+		}
 	}
 
+	request := &topo.CreateRequest{
+		Object: object,
+	}
 	_, err := client.Create(context.TODO(), request)
 	if err == nil {
 		return nil

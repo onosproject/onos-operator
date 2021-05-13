@@ -16,6 +16,7 @@ package entity
 
 import (
 	"context"
+	prototypes "github.com/gogo/protobuf/types"
 	"github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
@@ -216,19 +217,26 @@ func (r *Reconciler) entityExists(entity *v1beta1.Entity, client topo.TopoClient
 }
 
 func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient) error {
-	request := &topo.CreateRequest{
-		Object: &topo.Object{
-			ID:   topo.ID(entity.Name),
-			Type: topo.Object_ENTITY,
-			Obj: &topo.Object_Entity{
-				Entity: &topo.Entity{
-					KindID: topo.ID(entity.Spec.Kind.Name),
-				},
+	object := &topo.Object{
+		ID:   topo.ID(entity.Name),
+		Type: topo.Object_ENTITY,
+		Obj: &topo.Object_Entity{
+			Entity: &topo.Entity{
+				KindID: topo.ID(entity.Spec.Kind.Name),
 			},
-			Attributes: entity.Spec.Attributes,
 		},
+		Aspects: make(map[string]*prototypes.Any),
+	}
+	for key, value := range entity.Spec.Aspects {
+		err := object.SetAspectBytes(key, value.Raw)
+		if err != nil {
+			return err
+		}
 	}
 
+	request := &topo.CreateRequest{
+		Object: object,
+	}
 	_, err := client.Create(context.TODO(), request)
 	if err == nil {
 		return nil

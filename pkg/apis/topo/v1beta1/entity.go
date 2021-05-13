@@ -16,12 +16,13 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EntitySpec is the k8s spec for a Entity resource
 type EntitySpec struct {
-	Kind       metav1.ObjectMeta `json:"kind,omitempty"`
-	Attributes map[string]string `json:"attributes,omitempty"`
+	Kind    metav1.ObjectMeta               `json:"kind,omitempty"`
+	Aspects map[string]runtime.RawExtension `json:"aspects,omitempty"`
 }
 
 // EntityStatus defines the observed state of Entity
