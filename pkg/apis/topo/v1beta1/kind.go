@@ -16,11 +16,12 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // KindSpec is the k8s spec for a Kind resource
 type KindSpec struct {
-	Attributes map[string]string `json:"attributes,omitempty"`
+	Aspects map[string]runtime.RawExtension `json:"aspects,omitempty"`
 }
 
 // KindStatus defines the observed state of Kind

@@ -16,6 +16,7 @@ package kind
 
 import (
 	"context"
+	prototypes "github.com/gogo/protobuf/types"
 	"github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
@@ -196,20 +197,26 @@ func (r *Reconciler) kindExists(kind *v1beta1.Kind, client topo.TopoClient) (boo
 }
 
 func (r *Reconciler) createKind(kind *v1beta1.Kind, client topo.TopoClient) error {
-	request := &topo.CreateRequest{
-		Object: &topo.Object{
-			ID:   topo.ID(kind.Name),
-			Type: topo.Object_KIND,
-			Obj: &topo.Object_Kind{
-				Kind: &topo.Kind{
-					Name:       kind.Name,
-					Attributes: kind.Spec.Attributes,
-				},
+	object := &topo.Object{
+		ID:   topo.ID(kind.Name),
+		Type: topo.Object_KIND,
+		Obj: &topo.Object_Kind{
+			Kind: &topo.Kind{
+				Name: kind.Name,
 			},
-			Attributes: kind.Spec.Attributes,
 		},
+		Aspects: make(map[string]*prototypes.Any),
+	}
+	for key, value := range kind.Spec.Aspects {
+		err := object.SetAspectBytes(key, value.Raw)
+		if err != nil {
+			return err
+		}
 	}
 
+	request := &topo.CreateRequest{
+		Object: object,
+	}
 	_, err := client.Create(context.TODO(), request)
 	if err == nil {
 		return nil

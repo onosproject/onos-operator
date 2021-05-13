@@ -16,14 +16,15 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // RelationSpec is the k8s spec for a Relation resource
 type RelationSpec struct {
-	Kind       metav1.ObjectMeta `json:"kind,omitempty"`
-	Source     metav1.ObjectMeta `json:"source,omitempty"`
-	Target     metav1.ObjectMeta `json:"target,omitempty"`
-	Attributes map[string]string `json:"attributes,omitempty"`
+	Kind    metav1.ObjectMeta      `json:"kind,omitempty"`
+	Source  metav1.ObjectMeta      `json:"source,omitempty"`
+	Target  metav1.ObjectMeta      `json:"target,omitempty"`
+	Aspects map[string]runtime.RawExtension `json:"aspects,omitempty"`
 }
 
 // RelationStatus defines the observed state of Relation
