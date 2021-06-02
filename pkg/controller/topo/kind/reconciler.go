@@ -60,23 +60,6 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
-
-	// Watch for changes to secondary resource Entity and requeue the Kind
-	err = c.Watch(&source.Kind{Type: &v1beta1.Entity{}}, &handler.EnqueueRequestForOwner{
-		OwnerType: &v1beta1.Kind{},
-	})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary resource Relation and requeue the Kind
-	err = c.Watch(&source.Kind{Type: &v1beta1.Relation{}}, &handler.EnqueueRequestForOwner{
-		OwnerType: &v1beta1.Kind{},
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

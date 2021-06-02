@@ -25,13 +25,10 @@ import (
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"google.golang.org/grpc/status"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -63,15 +60,6 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
-
-	// Watch for changes to secondary resource Kind and requeue the associated entities
-	err = c.Watch(&source.Kind{Type: &v1beta1.Kind{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: &kindMapper{mgr.GetClient()},
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -110,31 +98,6 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 }
 
 func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, error) {
-	// If the entity's Kind is available, set the Kind as the entity's owner
-	kind := &v1beta1.Kind{}
-	name := types.NamespacedName{
-		Namespace: entity.Namespace,
-		Name:      entity.Spec.Kind.Name,
-	}
-	err := r.client.Get(context.TODO(), name, kind)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		return reconcile.Result{}, err
-	} else if err == nil {
-		err := controllerutil.SetOwnerReference(kind, entity, r.scheme)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		err = r.client.Update(context.TODO(), entity)
-		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				return reconcile.Result{}, nil
-			}
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
-	}
-
 	// Add the finalizer to the entity if necessary
 	if !k8s.HasFinalizer(entity, topoFinalizer) {
 		k8s.AddFinalizer(entity, topoFinalizer)
@@ -274,35 +237,4 @@ func (r *Reconciler) deleteEntity(entity *v1beta1.Entity, client topo.TopoClient
 		return err
 	}
 	return nil
-}
-
-type kindMapper struct {
-	client client.Client
-}
-
-func (m *kindMapper) Map(object handler.MapObject) []reconcile.Request {
-	kind := object.Object.(*v1beta1.Kind)
-	entities := &v1beta1.EntityList{}
-	entityFields := map[string]string{
-		"spec.kind.name": kind.Name,
-	}
-	entityOpts := &client.ListOptions{
-		Namespace:     kind.Namespace,
-		FieldSelector: fields.SelectorFromSet(entityFields),
-	}
-	err := m.client.List(context.TODO(), entities, entityOpts)
-	if err != nil {
-		return []reconcile.Request{}
-	}
-
-	requests := make([]reconcile.Request, len(entities.Items))
-	for i, entity := range entities.Items {
-		requests[i] = reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Namespace: entity.Namespace,
-				Name:      entity.Name,
-			},
-		}
-	}
-	return requests
 }
