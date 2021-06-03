@@ -25,13 +25,10 @@ import (
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"google.golang.org/grpc/status"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -63,15 +60,6 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
-
-	// Watch for changes to secondary resource Kind and requeue the associated relations
-	err = c.Watch(&source.Kind{Type: &v1beta1.Kind{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: &kindMapper{mgr.GetClient()},
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -110,31 +98,6 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 }
 
 func (r *Reconciler) reconcileCreate(relation *v1beta1.Relation) (reconcile.Result, error) {
-	// If the relation's Kind is available, set the Kind as the relation's owner
-	kind := &v1beta1.Kind{}
-	name := types.NamespacedName{
-		Namespace: relation.Namespace,
-		Name:      relation.Spec.Kind.Name,
-	}
-	err := r.client.Get(context.TODO(), name, kind)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		return reconcile.Result{}, err
-	} else if err == nil {
-		err := controllerutil.SetOwnerReference(kind, relation, r.scheme)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		err = r.client.Update(context.TODO(), relation)
-		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				return reconcile.Result{}, nil
-			}
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
-	}
-
 	// Add the finalizer to the relation if necessary
 	if !k8s.HasFinalizer(relation, topoFinalizer) {
 		k8s.AddFinalizer(relation, topoFinalizer)
@@ -276,35 +239,4 @@ func (r *Reconciler) deleteRelation(relation *v1beta1.Relation, client topo.Topo
 		return err
 	}
 	return nil
-}
-
-type kindMapper struct {
-	client client.Client
-}
-
-func (m *kindMapper) Map(object handler.MapObject) []reconcile.Request {
-	kind := object.Object.(*v1beta1.Kind)
-	relations := &v1beta1.RelationList{}
-	relationFields := map[string]string{
-		"spec.kind.name": kind.Name,
-	}
-	relationOpts := &client.ListOptions{
-		Namespace:     kind.Namespace,
-		FieldSelector: fields.SelectorFromSet(relationFields),
-	}
-	err := m.client.List(context.TODO(), relations, relationOpts)
-	if err != nil {
-		return []reconcile.Request{}
-	}
-
-	requests := make([]reconcile.Request, len(relations.Items))
-	for i, relation := range relations.Items {
-		requests[i] = reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Namespace: relation.Namespace,
-				Name:      relation.Name,
-			},
-		}
-	}
-	return requests
 }
