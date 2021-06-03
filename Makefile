@@ -45,7 +45,7 @@ golang-ci: # @HELP install golang-ci if not present
 	golangci-lint --version || curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b `go env GOPATH`/bin v1.36.0
 
 license_check: build-tools # @HELP examine and ensure license headers exist
-	./../build-tools/licensing/boilerplate.py -v --rootdir=${CURDIR}
+	./../build-tools/licensing/boilerplate.py -v --rootdir=${CURDIR}/apis --skipped-dir pkg/clientset
 
 images: # @HELP build Docker images
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/admission-init/_output/bin/admission-init ./cmd/admission-init
