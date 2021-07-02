@@ -24,8 +24,10 @@ import (
 	"github.com/onosproject/onos-operator/pkg/controller/util/grpc"
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"google.golang.org/grpc/status"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -136,18 +138,29 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 		return reconcile.Result{}, nil
 	}
 
-	// Connect to the topology service
-	conn, err := grpc.ConnectService(r.client, entity.Namespace, topoService)
-	if err != nil {
+	ns := &corev1.Namespace{}
+	nsName := types.NamespacedName{
+		Name: entity.Namespace,
+	}
+	err := r.client.Get(context.TODO(), nsName, ns)
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
-	defer conn.Close()
 
-	client := topo.NewTopoClient(conn)
+	if err == nil && ns.DeletionTimestamp == nil {
+		// Connect to the topology service
+		conn, err := grpc.ConnectService(r.client, entity.Namespace, topoService)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		defer conn.Close()
 
-	// Delete the entity from the topology
-	if err := r.deleteEntity(entity, client); err != nil {
-		return reconcile.Result{}, err
+		client := topo.NewTopoClient(conn)
+
+		// Delete the entity from the topology
+		if err := r.deleteEntity(entity, client); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	// Once the entity has been deleted, remove the topology finalizer
