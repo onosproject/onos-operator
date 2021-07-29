@@ -21,8 +21,5 @@ import (
 
 // AddControllers adds the configuration controllers to the given manager
 func AddControllers(mgr manager.Manager) error {
-	if err := model.Add(mgr); err != nil {
-		return err
-	}
-	return nil
+	return model.Add(mgr)
 }

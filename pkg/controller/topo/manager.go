@@ -46,11 +46,8 @@ func AddControllers(mgr manager.Manager) error {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(&v1beta1.Relation{}, "spec.kind.name", func(rawObj runtime.Object) []string {
+	return mgr.GetFieldIndexer().IndexField(&v1beta1.Relation{}, "spec.kind.name", func(rawObj runtime.Object) []string {
 		relation := rawObj.(*v1beta1.Relation)
 		return []string{relation.Spec.Kind.Name}
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
