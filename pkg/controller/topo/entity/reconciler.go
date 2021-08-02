@@ -118,7 +118,7 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 
 	client := topo.NewTopoClient(conn)
 
-	// Check if the entity exists in the topology and exit reconciliation if so
+	// Check if the entity exists in the topology and return it for update if so
 	if object, err := r.entityExists(entity, client); err != nil {
 		return reconcile.Result{}, err
 	} else if object != nil {

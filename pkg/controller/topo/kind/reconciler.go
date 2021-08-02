@@ -118,7 +118,7 @@ func (r *Reconciler) reconcileCreate(kind *v1beta1.Kind) (reconcile.Result, erro
 
 	client := topo.NewTopoClient(conn)
 
-	// Check if the kind exists in the topology and exit reconciliation if so
+	// Check if the kind exists in the topology and return it for update if so
 	if object, err := r.kindExists(kind, client); err != nil {
 		return reconcile.Result{}, err
 	} else if object != nil {
