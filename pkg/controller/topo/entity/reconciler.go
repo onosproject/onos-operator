@@ -119,9 +119,12 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 	client := topo.NewTopoClient(conn)
 
 	// Check if the entity exists in the topology and exit reconciliation if so
-	if exists, err := r.entityExists(entity, client); err != nil {
+	if object, err := r.entityExists(entity, client); err != nil {
 		return reconcile.Result{}, err
-	} else if exists {
+	} else if object != nil {
+		if err := r.updateEntity(entity, object, client); err != nil {
+			return reconcile.Result{}, err
+		}
 		return reconcile.Result{}, nil
 	}
 
@@ -171,25 +174,25 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 	return reconcile.Result{}, nil
 }
 
-func (r *Reconciler) entityExists(entity *v1beta1.Entity, client topo.TopoClient) (bool, error) {
+func (r *Reconciler) entityExists(entity *v1beta1.Entity, client topo.TopoClient) (*topo.Object, error) {
 	request := &topo.GetRequest{
 		ID: topo.ID(entity.Name),
 	}
-	_, err := client.Get(context.TODO(), request)
+	resp, err := client.Get(context.TODO(), request)
 	if err == nil {
-		return true, nil
+		return resp.Object, nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
-		return false, err
+		return nil, err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsNotFound(err) {
-		return false, err
+		return nil, err
 	}
-	return false, nil
+	return nil, nil
 }
 
 func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient) error {
@@ -214,6 +217,34 @@ func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient
 		Object: object,
 	}
 	_, err := client.Create(context.TODO(), request)
+	if err == nil {
+		return nil
+	}
+
+	stat, ok := status.FromError(err)
+	if !ok {
+		return err
+	}
+
+	err = errors.FromStatus(stat)
+	if !errors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) updateEntity(entity *v1beta1.Entity, object *topo.Object, client topo.TopoClient) error {
+	for key, value := range entity.Spec.Aspects {
+		err := object.SetAspectBytes(key, value.Raw)
+		if err != nil {
+			return err
+		}
+	}
+
+	request := &topo.UpdateRequest{
+		Object: object,
+	}
+	_, err := client.Update(context.TODO(), request)
 	if err == nil {
 		return nil
 	}
