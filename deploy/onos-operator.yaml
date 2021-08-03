@@ -353,7 +353,7 @@ spec:
       serviceAccountName: onos-operator
       initContainers:
       - name: init-certs
-        image: onosproject/config-operator-init:v0.4.5
+        image: onosproject/config-operator-init:v0.4.6
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
@@ -383,7 +383,7 @@ spec:
           mountPath: /etc/webhook/certs
       containers:
       - name: controller
-        image: onosproject/config-operator:v0.4.5
+        image: onosproject/config-operator:v0.4.6
         ports:
         - containerPort: 60000
           name: metrics
@@ -489,7 +489,7 @@ spec:
       serviceAccountName: onos-operator
       containers:
       - name: controller
-        image: onosproject/topo-operator:v0.4.5
+        image: onosproject/topo-operator:v0.4.6
         ports:
         - containerPort: 60000
           name: metrics

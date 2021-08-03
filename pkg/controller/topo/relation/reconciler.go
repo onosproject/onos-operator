@@ -118,10 +118,13 @@ func (r *Reconciler) reconcileCreate(relation *v1beta1.Relation) (reconcile.Resu
 
 	client := topo.NewTopoClient(conn)
 
-	// Check if the relation exists in the topology and exit reconciliation if so
-	if exists, err := r.relationExists(relation, client); err != nil {
+	// Check if the relation exists in the topology and return it for update if so
+	if object, err := r.relationExists(relation, client); err != nil {
 		return reconcile.Result{}, err
-	} else if exists {
+	} else if object != nil {
+		if err := r.updateRelation(relation, object, client); err != nil {
+			return reconcile.Result{}, err
+		}
 		return reconcile.Result{}, nil
 	}
 
@@ -171,25 +174,25 @@ func (r *Reconciler) reconcileDelete(relation *v1beta1.Relation) (reconcile.Resu
 	return reconcile.Result{}, nil
 }
 
-func (r *Reconciler) relationExists(relation *v1beta1.Relation, client topo.TopoClient) (bool, error) {
+func (r *Reconciler) relationExists(relation *v1beta1.Relation, client topo.TopoClient) (*topo.Object, error) {
 	request := &topo.GetRequest{
 		ID: topo.ID(relation.Name),
 	}
-	_, err := client.Get(context.TODO(), request)
+	resp, err := client.Get(context.TODO(), request)
 	if err == nil {
-		return true, nil
+		return resp.Object, nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
-		return false, err
+		return nil, err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsNotFound(err) {
-		return false, err
+		return nil, err
 	}
-	return false, nil
+	return nil, nil
 }
 
 func (r *Reconciler) createRelation(relation *v1beta1.Relation, client topo.TopoClient) error {
@@ -205,6 +208,34 @@ func (r *Reconciler) createRelation(relation *v1beta1.Relation, client topo.Topo
 		},
 		Aspects: make(map[string]*prototypes.Any),
 	}
+	for key, value := range relation.Spec.Aspects {
+		err := object.SetAspectBytes(key, value.Raw)
+		if err != nil {
+			return err
+		}
+	}
+
+	request := &topo.CreateRequest{
+		Object: object,
+	}
+	_, err := client.Create(context.TODO(), request)
+	if err == nil {
+		return nil
+	}
+
+	stat, ok := status.FromError(err)
+	if !ok {
+		return err
+	}
+
+	err = errors.FromStatus(stat)
+	if !errors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) updateRelation(relation *v1beta1.Relation, object *topo.Object, client topo.TopoClient) error {
 	for key, value := range relation.Spec.Aspects {
 		err := object.SetAspectBytes(key, value.Raw)
 		if err != nil {
