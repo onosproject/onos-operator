@@ -10,6 +10,7 @@ require (
 	github.com/onosproject/onos-api/go v0.7.38
 	github.com/onosproject/onos-lib-go v0.7.10
 	github.com/prometheus/procfs v0.0.5 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
 	google.golang.org/grpc v1.33.2
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	k8s.io/api v0.17.3
