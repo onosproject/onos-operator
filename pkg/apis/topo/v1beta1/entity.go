@@ -17,6 +17,7 @@ package v1beta1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"strings"
 )
 
 // EntitySpec is the k8s spec for a Entity resource
@@ -51,4 +52,10 @@ type EntityList struct {
 
 func init() {
 	SchemeBuilder.Register(&Entity{}, &EntityList{})
+}
+
+// NameToID transforms the DNS compliant name into a URI; first '.' transforms into ':' and subsequent '.' transform to '/'.
+func NameToID(name string) string {
+	id := strings.Replace(name, ".", ":", 1)
+	return strings.Replace(id, ".", "/", -1)
 }
