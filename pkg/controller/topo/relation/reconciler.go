@@ -176,7 +176,7 @@ func (r *Reconciler) reconcileDelete(relation *v1beta1.Relation) (reconcile.Resu
 
 func (r *Reconciler) relationExists(relation *v1beta1.Relation, client topo.TopoClient) (*topo.Object, error) {
 	request := &topo.GetRequest{
-		ID: topo.ID(relation.Name),
+		ID: topo.ID(relation.Spec.URI),
 	}
 	resp, err := client.Get(context.TODO(), request)
 	if err == nil {
@@ -197,7 +197,7 @@ func (r *Reconciler) relationExists(relation *v1beta1.Relation, client topo.Topo
 
 func (r *Reconciler) createRelation(relation *v1beta1.Relation, client topo.TopoClient) error {
 	object := &topo.Object{
-		ID:   topo.ID(relation.Name),
+		ID:   topo.ID(relation.Spec.URI),
 		Type: topo.Object_RELATION,
 		Obj: &topo.Object_Relation{
 			Relation: &topo.Relation{
@@ -265,7 +265,7 @@ func (r *Reconciler) updateRelation(relation *v1beta1.Relation, object *topo.Obj
 
 func (r *Reconciler) deleteRelation(relation *v1beta1.Relation, client topo.TopoClient) error {
 	request := &topo.DeleteRequest{
-		ID: topo.ID(relation.Name),
+		ID: topo.ID(relation.Spec.URI),
 	}
 
 	_, err := client.Delete(context.TODO(), request)

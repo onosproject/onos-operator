@@ -22,6 +22,7 @@ import (
 // EntitySpec is the k8s spec for a Entity resource
 type EntitySpec struct {
 	Kind    metav1.ObjectMeta               `json:"kind,omitempty"`
+	URI     string                          `json:"uri,omitempty"`
 	Aspects map[string]runtime.RawExtension `json:"aspects,omitempty"`
 }
 
