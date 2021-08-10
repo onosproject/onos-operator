@@ -19,12 +19,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// RelationEndpoint represents the source or target or a Relation resource
+type RelationEndpoint struct {
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	URI               string `json:"uri,omitempty"`
+}
+
 // RelationSpec is the k8s spec for a Relation resource
 type RelationSpec struct {
 	URI     string                          `json:"uri,omitempty"`
 	Kind    metav1.ObjectMeta               `json:"kind,omitempty"`
-	Source  string                          `json:"source,omitempty"`
-	Target  string                          `json:"target,omitempty"`
+	Source  RelationEndpoint                `json:"source,omitempty"`
+	Target  RelationEndpoint                `json:"target,omitempty"`
 	Aspects map[string]runtime.RawExtension `json:"aspects,omitempty"`
 }
 

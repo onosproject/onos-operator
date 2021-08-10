@@ -202,8 +202,8 @@ func (r *Reconciler) createRelation(relation *v1beta1.Relation, client topo.Topo
 		Obj: &topo.Object_Relation{
 			Relation: &topo.Relation{
 				KindID:      topo.ID(relation.Spec.Kind.Name),
-				SrcEntityID: topo.ID(relation.Spec.Source),
-				TgtEntityID: topo.ID(relation.Spec.Target),
+				SrcEntityID: topo.ID(relation.Spec.Source.URI),
+				TgtEntityID: topo.ID(relation.Spec.Target.URI),
 			},
 		},
 		Aspects: make(map[string]*prototypes.Any),
