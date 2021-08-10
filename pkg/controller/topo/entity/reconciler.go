@@ -176,7 +176,7 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 
 func (r *Reconciler) entityExists(entity *v1beta1.Entity, client topo.TopoClient) (*topo.Object, error) {
 	request := &topo.GetRequest{
-		ID: topo.ID(entity.Name),
+		ID: topo.ID(entity.Spec.URI),
 	}
 	resp, err := client.Get(context.TODO(), request)
 	if err == nil {
@@ -197,7 +197,7 @@ func (r *Reconciler) entityExists(entity *v1beta1.Entity, client topo.TopoClient
 
 func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient) error {
 	object := &topo.Object{
-		ID:   topo.ID(entity.Name),
+		ID:   topo.ID(entity.Spec.URI),
 		Type: topo.Object_ENTITY,
 		Obj: &topo.Object_Entity{
 			Entity: &topo.Entity{
@@ -263,7 +263,7 @@ func (r *Reconciler) updateEntity(entity *v1beta1.Entity, object *topo.Object, c
 
 func (r *Reconciler) deleteEntity(entity *v1beta1.Entity, client topo.TopoClient) error {
 	request := &topo.DeleteRequest{
-		ID: topo.ID(entity.Name),
+		ID: topo.ID(entity.Spec.URI),
 	}
 
 	_, err := client.Delete(context.TODO(), request)
