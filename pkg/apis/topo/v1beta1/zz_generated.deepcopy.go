@@ -291,8 +291,6 @@ func (in *RelationList) DeepCopyObject() runtime.Object {
 func (in *RelationSpec) DeepCopyInto(out *RelationSpec) {
 	*out = *in
 	in.Kind.DeepCopyInto(&out.Kind)
-	in.Source.DeepCopyInto(&out.Source)
-	in.Target.DeepCopyInto(&out.Target)
 	if in.Aspects != nil {
 		in, out := &in.Aspects, &out.Aspects
 		*out = make(map[string]runtime.RawExtension, len(*in))

@@ -21,10 +21,10 @@ import (
 
 // RelationSpec is the k8s spec for a Relation resource
 type RelationSpec struct {
-	Kind    metav1.ObjectMeta               `json:"kind,omitempty"`
 	URI     string                          `json:"uri,omitempty"`
-	Source  metav1.ObjectMeta               `json:"source,omitempty"`
-	Target  metav1.ObjectMeta               `json:"target,omitempty"`
+	Kind    metav1.ObjectMeta               `json:"kind,omitempty"`
+	Source  string                          `json:"source,omitempty"`
+	Target  string                          `json:"target,omitempty"`
 	Aspects map[string]runtime.RawExtension `json:"aspects,omitempty"`
 }
 
