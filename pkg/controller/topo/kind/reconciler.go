@@ -241,10 +241,10 @@ func (r *Reconciler) updateKind(kind *v1beta1.Kind, object *topo.Object, client 
 		}
 	}
 
-	request := &topo.CreateRequest{
+	request := &topo.UpdateRequest{
 		Object: object,
 	}
-	_, err := client.Create(context.TODO(), request)
+	_, err := client.Update(context.TODO(), request)
 	if err == nil {
 		return nil
 	}
