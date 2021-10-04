@@ -10,6 +10,7 @@ build:
 	go build -o build/_output/admission-init ./cmd/admission-init
 	go build -o build/_output/config-operator ./cmd/config-operator
 	go build -o build/_output/topo-operator ./cmd/topo-operator
+	go build -o build/_output/app-operator ./cmd/app-operator
 
 version_check: # @HELP verify that release versions are correct
 	./build/bin/check-versions
@@ -54,6 +55,8 @@ images: # @HELP build Docker images
 	docker build . -f build/config-operator/Dockerfile -t onosproject/config-operator:${ONOS_OPERATOR_VERSION}
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/topo-operator/_output/bin/topo-operator ./cmd/topo-operator
 	docker build . -f build/topo-operator/Dockerfile -t onosproject/topo-operator:${ONOS_OPERATOR_VERSION}
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/app-operator/_output/bin/app-operator ./cmd/app-operator
+	docker build . -f build/app-operator/Dockerfile -t onosproject/app-operator:${ONOS_OPERATOR_VERSION}
 
 kind: # @HELP build Docker images and add them to the currently configured kind cluster
 kind: images
@@ -61,11 +64,12 @@ kind: images
 	kind load docker-image onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
 	kind load docker-image onosproject/config-operator:${ONOS_OPERATOR_VERSION}
 	kind load docker-image onosproject/topo-operator:${ONOS_OPERATOR_VERSION}
+	kind load docker-image onosproject/app-operator:${ONOS_OPERATOR_VERSION}
 
 all: build images
 
 publish: # @HELP publish version on github and dockerhub
-	./../build-tools/publish-version ${VERSION} onosproject/config-operator-init onosproject/config-operator onosproject/topo-operator
+	./../build-tools/publish-version ${VERSION} onosproject/config-operator-init onosproject/config-operator onosproject/topo-operator onosproject/app-operator
 
 jenkins-publish: build-tools jenkins-tools # @HELP Jenkins calls this to publish artifacts
 	./build/bin/push-images
@@ -75,12 +79,13 @@ push: # @HELP push latest versions of the images to docker hub
 	docker push onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
 	docker push onosproject/config-operator:${ONOS_OPERATOR_VERSION}
 	docker push onosproject/topo-operator:${ONOS_OPERATOR_VERSION}
+	docker push onosproject/app-operator:${ONOS_OPERATOR_VERSION}
 
 bumponosdeps: # @HELP update "onosproject" go dependencies and push patch to git.
 	./../build-tools/bump-onos-deps ${VERSION}
 
 clean: # @HELP remove all the build artifacts
-	rm -rf ./build/_output ./vendor ./cmd/dummy/dummy build/admission-init/_output build/config-operator/_output build/topo-operator/_output
+	rm -rf ./build/_output ./vendor ./cmd/dummy/dummy build/admission-init/_output build/config-operator/_output build/topo-operator/_output build/app-operator/_output
 
 help:
 	@grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST) \
