@@ -20,7 +20,6 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	appapi "github.com/onosproject/onos-operator/pkg/apis/app"
 	appctrl "github.com/onosproject/onos-operator/pkg/controller/app/sidecar"
-	"github.com/onosproject/onos-operator/pkg/controller/config/registry"
 	"github.com/onosproject/onos-operator/pkg/controller/util/k8s"
 	"github.com/onosproject/onos-operator/pkg/controller/util/leader"
 	"github.com/onosproject/onos-operator/pkg/controller/util/ready"
@@ -85,12 +84,6 @@ func main() {
 
 	// Setup all Controllers
 	if err := appctrl.AddProxyController(mgr); err != nil {
-		log.Error(err)
-		os.Exit(1)
-	}
-
-	// Setup all webhooks
-	if err := registry.RegisterWebhooks(mgr); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
