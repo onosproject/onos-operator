@@ -43,7 +43,6 @@ const (
 	proxyInjectPath             = "/inject-proxy"
 	proxyInjectAnnotation       = "proxy.onosproject.org/inject"
 	proxyInjectStatusAnnotation = "proxy.onosproject.org/status"
-	proxyReadyCondition         = "ProxyReady"
 	injectedStatus              = "injected"
 )
 
@@ -148,9 +147,6 @@ func (i *ProxyInjector) Handle(ctx context.Context, request admission.Request) a
 				},
 			},
 		},
-	})
-	pod.Spec.ReadinessGates = append(pod.Spec.ReadinessGates, corev1.PodReadinessGate{
-		ConditionType: proxyReadyCondition,
 	})
 	pod.Annotations[proxyInjectStatusAnnotation] = injectedStatus
 
