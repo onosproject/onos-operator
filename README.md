@@ -4,7 +4,19 @@ This project provides a set of [Kubernetes operators][Operator pattern] for mana
 architecture. µONOS operators extend the Kubernetes API with [custom resources] and integrate µONOS subsystems
 with the Kubernetes control plane.
 
-To install the µONOS operator:
+To install the µONOS operator you can use Helm as follows:
+
+```bash
+> helm install -n kube-system onos-operator onosproject/onos-operator --wait
+NAME: onos-operator
+LAST DEPLOYED: Tue Oct 12 20:02:04 2021
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+```
+
+or alternatively, you may use `kubectl` directly as follows:
 
 ```bash
 > kubectl create -f https://raw.githubusercontent.com/onosproject/onos-operator/master/deploy/onos-operator.yaml
