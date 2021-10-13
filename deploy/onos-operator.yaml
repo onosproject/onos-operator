@@ -543,3 +543,109 @@ data:
       stdout:
         type: stdout
         stdout: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-operator
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: app-operator
+  template:
+    metadata:
+      labels:
+        name: app-operator
+    spec:
+      serviceAccountName: onos-operator
+      initContainers:
+        - name: init-certs
+          image: onosproject/config-operator-init:v0.4.11
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 0
+          env:
+            - name: CONTROLLER_NAME
+              value: app-operator
+            - name: CONTROLLER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: certs
+              mountPath: /etc/webhook/certs
+      containers:
+        - name: controller
+          image: onosproject/app-operator:v0.4.11
+          ports:
+            - containerPort: 60000
+              name: metrics
+            - containerPort: 443
+              name: webhook-server
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 0
+          readinessProbe:
+            exec:
+              command:
+                - stat
+                - /tmp/onos-operator-ready
+            initialDelaySeconds: 4
+            periodSeconds: 10
+            failureThreshold: 1
+          env:
+            - name: CONTROLLER_NAME
+              value: app-operator
+            - name: CONTROLLER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: certs
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+      volumes:
+        - name: certs
+          emptyDir: {}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: app-operator
+webhooks:
+  - name: registry.config.onosproject.org
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        scope: Namespaced
+    clientConfig:
+      service:
+        name: app-operator
+        namespace: kube-system
+        path: /registry
+    admissionReviewVersions: ["v1beta1"]
+    sideEffects: None
+    failurePolicy: Ignore
+    timeoutSeconds: 10
