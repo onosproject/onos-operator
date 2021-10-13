@@ -4,37 +4,37 @@ This project provides a set of [Kubernetes operators][Operator pattern] for mana
 architecture. µONOS operators extend the Kubernetes API with [custom resources] and integrate µONOS subsystems
 with the Kubernetes control plane.
 
-To install the µONOS operator:
+To install the µONOS operator you can use Helm as follows:
 
 ```bash
-> kubectl create -f https://raw.githubusercontent.com/onosproject/onos-operator/master/deploy/onos-operator.yaml
-customresourcedefinition.apiextensions.k8s.io/models.config.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/modelregistries.config.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/services.topo.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/entities.topo.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/relations.topo.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/kinds.topo.onosproject.org created
-serviceaccount/onos-operator created
-clusterrole.rbac.authorization.k8s.io/onos-operator created
-clusterrolebinding.rbac.authorization.k8s.io/onos-operator created
-deployment.apps/config-operator created
-mutatingwebhookconfiguration.admissionregistration.k8s.io/config-operator created
-service/config-operator created
-deployment.apps/topo-operator created
-configmap/onos-operator-config created
+> helm install -n kube-system onos-operator onosproject/onos-operator --wait
+NAME: onos-operator
+LAST DEPLOYED: Tue Oct 12 20:02:04 2021
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
 ```
-
-The operator consists of a `topo-operator` pod and a `config-operator` pod which will be installed in the 
+The operator consists of a `topo-operator` pod, `config-operator` and `app-operator` pod, all of which will be installed in the 
 `kube-system` namespace by default.
 
 ```bash
 > kubectl get pods -n kube-system
-NAME                                         READY   STATUS    RESTARTS   AGE
-config-operator-56dc64df8d-8xwkm             1/1     Running   0          25s
-topo-operator-6f555cb86-b94kp                1/1     Running   0          24s
+NAME                                              READY   STATUS    RESTARTS   AGE
+onos-operator-app-585d588d5c-ndvkr                1/1     Running   0          42m39s
+onos-operator-config-6d59c87b9b-f89bk             1/1     Running   0          42m39s
+onos-operator-topo-7ff4df6f57-6p8dv               1/1     Running   0          42m39s
 ```
 
-## Topology operator
+## App Operator
+The application operator registers a mutating admission webhook to intercept pod deployment requests. These
+requests are inspected for presence of `proxy.onosproject.org/inject` metadata annotation. If this
+annotation is present and its value is `true`, the deployment request will be augmented to include a
+sidecar `onosproject/onos-proxy` container as part of the pod.
+
+For more information about see [onos-proxy].
+
+## Topology Operator
 
 The topology operator extends the Kubernetes API with custom resources for defining µONOS topology objects. Topology
 resources are propagated from the Kubernetes API to the [onos-topo] service via the [onos-api]. When a topology resource
@@ -110,7 +110,7 @@ The operator will automatically populate the µONOS topology with an entity for 
 selector. This allows dynamic/autoscaling Kubernetes components like `ReplicaSet`s to be represented as dynamic
 objects in the µONOS topology.
 
-## Config operator
+## Config Operator
 
 The config operator extends the Kubernetes API, adding a custom `Model` resource for defining config (YANG) models.
 The config operator automatically injects configured `Model` resources into [onos-config] pods, compiling plugins
@@ -177,3 +177,4 @@ spec:
 [onos-api]: https://github.com/onosproject/onos-api
 [onos-topo]: https://github.com/onosproject/onos-topo
 [onos-config]: https://github.com/onosproject/onos-config
+[onos-proxy]: https://github.com/onosproject/onos-proxy
