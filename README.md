@@ -15,27 +15,6 @@ STATUS: deployed
 REVISION: 1
 TEST SUITE: None
 ```
-
-or alternatively, you may use `kubectl` directly as follows, although this is less preferable:
-
-```bash
-> kubectl create -f https://raw.githubusercontent.com/onosproject/onos-operator/master/deploy/onos-operator.yaml
-customresourcedefinition.apiextensions.k8s.io/models.config.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/modelregistries.config.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/services.topo.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/entities.topo.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/relations.topo.onosproject.org created
-customresourcedefinition.apiextensions.k8s.io/kinds.topo.onosproject.org created
-serviceaccount/onos-operator created
-clusterrole.rbac.authorization.k8s.io/onos-operator created
-clusterrolebinding.rbac.authorization.k8s.io/onos-operator created
-deployment.apps/config-operator created
-mutatingwebhookconfiguration.admissionregistration.k8s.io/config-operator created
-service/config-operator created
-deployment.apps/topo-operator created
-configmap/onos-operator-config created
-```
-
 The operator consists of a `topo-operator` pod, `config-operator` and `app-operator` pod, all of which will be installed in the 
 `kube-system` namespace by default.
 
