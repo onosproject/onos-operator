@@ -16,7 +16,7 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-or alternatively, you may use `kubectl` directly as follows:
+or alternatively, you may use `kubectl` directly as follows, although this is less preferable:
 
 ```bash
 > kubectl create -f https://raw.githubusercontent.com/onosproject/onos-operator/master/deploy/onos-operator.yaml
