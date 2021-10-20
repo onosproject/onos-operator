@@ -212,22 +212,26 @@ func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient
 			return err
 		}
 	}
+	log.Infof("Creating entity %+v", object)
 
 	request := &topo.CreateRequest{
 		Object: object,
 	}
 	_, err := client.Create(context.TODO(), request)
 	if err == nil {
+		log.Infof("Entity created: %+v", object)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Infof("Unable to create entity: %+v", object)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsAlreadyExists(err) {
+		log.Warnf("Unable to create entity %s: status=%+v'; err=%+v", object.ID, stat, err)
 		return err
 	}
 	return nil
@@ -240,22 +244,26 @@ func (r *Reconciler) updateEntity(entity *v1beta1.Entity, object *topo.Object, c
 			return err
 		}
 	}
+	log.Infof("Updating entity %+v", object)
 
 	request := &topo.UpdateRequest{
 		Object: object,
 	}
 	_, err := client.Update(context.TODO(), request)
 	if err == nil {
+		log.Infof("Entity updated: %+v", object)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Warnf("Unable to update entity %s: %+v", object.ID, err)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsAlreadyExists(err) {
+		log.Warnf("Unable to update entity %s: status=%+v'; err=%+v", object.ID, stat, err)
 		return err
 	}
 	return nil
@@ -265,19 +273,23 @@ func (r *Reconciler) deleteEntity(entity *v1beta1.Entity, client topo.TopoClient
 	request := &topo.DeleteRequest{
 		ID: topo.ID(entity.Spec.URI),
 	}
+	log.Infof("Deleting entity %s", request.ID)
 
 	_, err := client.Delete(context.TODO(), request)
 	if err == nil {
+		log.Infof("Entity deleted: %s", request.ID)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Warnf("Unable to delete entity %s: %+v", request.ID, err)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsNotFound(err) {
+		log.Warnf("Unable to delete entity %s: status=%+v'; err=%+v", request.ID, stat, err)
 		return err
 	}
 	return nil
