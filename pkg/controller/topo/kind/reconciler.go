@@ -212,22 +212,26 @@ func (r *Reconciler) createKind(kind *v1beta1.Kind, client topo.TopoClient) erro
 			return err
 		}
 	}
+	log.Infof("Creating kind %+v", object)
 
 	request := &topo.CreateRequest{
 		Object: object,
 	}
 	_, err := client.Create(context.TODO(), request)
 	if err == nil {
+		log.Infof("Kind created: %+v", object)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Warnf("Unable to create kind %s: %+v", object.ID, err)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsAlreadyExists(err) {
+		log.Warnf("Unable to create kind %s: status=%+v'; err=%+v", object.ID, stat, err)
 		return err
 	}
 	return nil
@@ -240,22 +244,26 @@ func (r *Reconciler) updateKind(kind *v1beta1.Kind, object *topo.Object, client 
 			return err
 		}
 	}
+	log.Infof("Updating kind %+v", object)
 
 	request := &topo.UpdateRequest{
 		Object: object,
 	}
 	_, err := client.Update(context.TODO(), request)
 	if err == nil {
+		log.Infof("Kind updated: %+v", object)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Warnf("Unable to update kind %s: %+v", object.ID, err)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsAlreadyExists(err) {
+		log.Warnf("Unable to update kind %s: status=%+v'; err=%+v", object.ID, stat, err)
 		return err
 	}
 	return nil
@@ -265,19 +273,23 @@ func (r *Reconciler) deleteKind(kind *v1beta1.Kind, client topo.TopoClient) erro
 	request := &topo.DeleteRequest{
 		ID: topo.ID(kind.Name),
 	}
+	log.Infof("Deleting kind %s", request.ID)
 
 	_, err := client.Delete(context.TODO(), request)
 	if err == nil {
+		log.Infof("Kind deleted: %s", request.ID)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Warnf("Unable to delete kind %s: %+v", request.ID, err)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsNotFound(err) {
+		log.Warnf("Unable to delete kind %s: status=%+v'; err=%+v", request.ID, stat, err)
 		return err
 	}
 	return nil

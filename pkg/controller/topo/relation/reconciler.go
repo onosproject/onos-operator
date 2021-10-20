@@ -214,22 +214,26 @@ func (r *Reconciler) createRelation(relation *v1beta1.Relation, client topo.Topo
 			return err
 		}
 	}
+	log.Infof("Creating relation %+v", object)
 
 	request := &topo.CreateRequest{
 		Object: object,
 	}
 	_, err := client.Create(context.TODO(), request)
 	if err == nil {
+		log.Infof("Relation created: %+v", object)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Infof("Unable to create relation: %+v", object)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsAlreadyExists(err) {
+		log.Infof("Relation created: %+v", object)
 		return err
 	}
 	return nil
@@ -242,22 +246,26 @@ func (r *Reconciler) updateRelation(relation *v1beta1.Relation, object *topo.Obj
 			return err
 		}
 	}
+	log.Infof("Updating relation %+v", object)
 
 	request := &topo.CreateRequest{
 		Object: object,
 	}
 	_, err := client.Create(context.TODO(), request)
 	if err == nil {
+		log.Infof("Relation updated: %+v", object)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Warnf("Unable to update relation %s: %+v", object.ID, err)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsAlreadyExists(err) {
+		log.Warnf("Unable to update relation %s: status=%+v'; err=%+v", object.ID, stat, err)
 		return err
 	}
 	return nil
@@ -267,19 +275,23 @@ func (r *Reconciler) deleteRelation(relation *v1beta1.Relation, client topo.Topo
 	request := &topo.DeleteRequest{
 		ID: topo.ID(relation.Spec.URI),
 	}
+	log.Infof("Deleting relation %s", request.ID)
 
 	_, err := client.Delete(context.TODO(), request)
 	if err == nil {
+		log.Infof("Relation deleted: %s", request.ID)
 		return nil
 	}
 
 	stat, ok := status.FromError(err)
 	if !ok {
+		log.Warnf("Unable to delete relation %s: %+v", request.ID, err)
 		return err
 	}
 
 	err = errors.FromStatus(stat)
 	if !errors.IsNotFound(err) {
+		log.Warnf("Unable to delete relation %s: status=%+v'; err=%+v", request.ID, stat, err)
 		return err
 	}
 	return nil
