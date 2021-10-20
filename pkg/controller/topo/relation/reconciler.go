@@ -233,7 +233,7 @@ func (r *Reconciler) createRelation(relation *v1beta1.Relation, client topo.Topo
 
 	err = errors.FromStatus(stat)
 	if !errors.IsAlreadyExists(err) {
-		log.Infof("Relation created: %+v", object)
+		log.Warnf("Unable to create relation %s: status=%+v'; err=%+v", object.ID, stat, err)
 		return err
 	}
 	return nil

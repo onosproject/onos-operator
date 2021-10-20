@@ -231,7 +231,7 @@ func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient
 
 	err = errors.FromStatus(stat)
 	if !errors.IsAlreadyExists(err) {
-		log.Infof("Entity created: %+v", object)
+		log.Warnf("Unable to create entity %s: status=%+v'; err=%+v", object.ID, stat, err)
 		return err
 	}
 	return nil
