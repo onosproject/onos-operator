@@ -15,14 +15,13 @@ STATUS: deployed
 REVISION: 1
 TEST SUITE: None
 ```
-The operator consists of a `topo-operator` pod, `config-operator` and `app-operator` pod, all of which will be installed in the 
+The operator consists of a `topo-operator` pod and `app-operator` pod, all of which will be installed in the 
 `kube-system` namespace by default.
 
 ```bash
 > kubectl get pods -n kube-system
 NAME                                              READY   STATUS    RESTARTS   AGE
 onos-operator-app-585d588d5c-ndvkr                1/1     Running   0          42m39s
-onos-operator-config-6d59c87b9b-f89bk             1/1     Running   0          42m39s
 onos-operator-topo-7ff4df6f57-6p8dv               1/1     Running   0          42m39s
 ```
 
@@ -109,68 +108,6 @@ spec:
 The operator will automatically populate the µONOS topology with an entity for each pod matching the service's label
 selector. This allows dynamic/autoscaling Kubernetes components like `ReplicaSet`s to be represented as dynamic
 objects in the µONOS topology.
-
-## Config Operator
-
-The config operator extends the Kubernetes API, adding a custom `Model` resource for defining config (YANG) models.
-The config operator automatically injects configured `Model` resources into [onos-config] pods, compiling plugins
-on the fly.
-
-```yaml
-apiVersion: config.onosproject.org/v1beta1
-kind: Model
-metadata:
-  name: ric
-spec:
-  plugin:
-    type: ric
-    version: 1.0.0
-  modules:
-  - name: test1
-    version: 2020-11-18
-    file: test1@2020-11-18.yang
-  files:
-    test1@2020-11-18.yang: |
-      module test1 {
-        namespace "http://opennetworking.org/oran/test1";
-        prefix t1;
-
-        organization
-          "Open Networking Foundation.";
-        contact
-          "Adib Rastegarnia";
-        description
-          "To generate JSON from this use command
-           pyang -f jtoxx test1.yang | python3 -m json.tool > test1.json
-           Copied from YangUIComponents project";
-
-        revision 2020-11-18 {
-          description
-            "Extended with new attributes on leaf2d, list2b";
-          reference
-            "RFC 6087";
-        }
-
-        container cont1a {
-          description
-            "The top level container";
-          leaf leaf1a {
-            type string {
-              length "1..80";
-            }
-            description
-              "display name to use in GUI or CLI";
-          }
-          leaf leaf2a {
-            type string {
-              length "1..255";
-            }
-            description
-              "user plane name";
-          }
-        }
-      }
-```
 
 [Operator pattern]: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
 [custom resources]: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
