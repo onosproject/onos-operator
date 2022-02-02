@@ -29,7 +29,7 @@ fi
 echo "SEMVER version $VERSION - checking image tags"
 found=0
 found=$(grep image: ./deploy/onos-operator.yaml | grep "$VERSION"\$ | wc -l) || true
-if (( found == 5 ))
+if (( found == 3 ))
 then
   exit 0
 else
