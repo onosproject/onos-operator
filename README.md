@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 2020-present Open Networking Foundation <info@opennetworking.org>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Kubernetes Operator for µONOS
 
 This project provides a set of [Kubernetes operators][Operator pattern] for managing components of the µONOS
