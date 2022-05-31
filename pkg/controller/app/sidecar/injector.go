@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -18,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
 	"strconv"
 )
 
@@ -30,10 +32,14 @@ const (
 )
 
 const (
-	proxyInjectPath             = "/inject-proxy"
-	proxyInjectAnnotation       = "proxy.onosproject.org/inject"
-	proxyInjectStatusAnnotation = "proxy.onosproject.org/status"
-	injectedStatus              = "injected"
+	proxyInjectPath              = "/inject-proxy"
+	proxyInjectAnnotation        = "proxy.onosproject.org/inject"
+	proxyInjectStatusAnnotation  = "proxy.onosproject.org/status"
+	injectedStatus               = "injected"
+	proxyCpuLimitAnnotation      = "proxy.onosproject.org/cpu-limit"
+	proxyMemoryLimitAnnotation   = "proxy.onosproject.org/memory-limit"
+	proxyCpuRequestAnnotation    = "proxy.onosproject.org/cpu-request"
+	proxyMemoryRequestAnnotation = "proxy.onosproject.org/memory-request"
 )
 
 const (
@@ -107,10 +113,38 @@ func (i *ProxyInjector) Handle(ctx context.Context, request admission.Request) a
 		return admission.Allowed(fmt.Sprintf("'%s' annotation is '%s'", proxyInjectStatusAnnotation, injectedBroker))
 	}
 
+	cpuLimit := pod.Annotations[proxyCpuLimitAnnotation]
+	memoryLimit := pod.Annotations[proxyMemoryLimitAnnotation]
+
+	limits := corev1.ResourceList{}
+
+	if cpuLimit != "" {
+		limits[corev1.ResourceCPU] = resource.MustParse(cpuLimit)
+	}
+	if memoryLimit != "" {
+		limits[corev1.ResourceMemory] = resource.MustParse(memoryLimit)
+	}
+
+	requests := corev1.ResourceList{}
+
+	cpuRequest := pod.Annotations[proxyCpuRequestAnnotation]
+	memoryRequest := pod.Annotations[proxyMemoryRequestAnnotation]
+
+	if cpuRequest != "" {
+		requests[corev1.ResourceCPU] = resource.MustParse(cpuRequest)
+	}
+	if memoryRequest != "" {
+		requests[corev1.ResourceMemory] = resource.MustParse(memoryRequest)
+	}
+
 	pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
 		Name:            "onos-proxy",
 		Image:           getDefaultProxyImage(),
 		ImagePullPolicy: corev1.PullIfNotPresent,
+		Resources: corev1.ResourceRequirements{
+			Limits:   limits,
+			Requests: requests,
+		},
 		Env: []corev1.EnvVar{
 			{
 				Name: proxyNamespaceEnv,
