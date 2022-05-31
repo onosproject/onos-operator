@@ -36,9 +36,9 @@ const (
 	proxyInjectAnnotation        = "proxy.onosproject.org/inject"
 	proxyInjectStatusAnnotation  = "proxy.onosproject.org/status"
 	injectedStatus               = "injected"
-	proxyCpuLimitAnnotation      = "proxy.onosproject.org/cpu-limit"
+	proxyCPULimitAnnotation      = "proxy.onosproject.org/cpu-limit"
 	proxyMemoryLimitAnnotation   = "proxy.onosproject.org/memory-limit"
-	proxyCpuRequestAnnotation    = "proxy.onosproject.org/cpu-request"
+	proxyCPURequestAnnotation    = "proxy.onosproject.org/cpu-request"
 	proxyMemoryRequestAnnotation = "proxy.onosproject.org/memory-request"
 )
 
@@ -113,7 +113,7 @@ func (i *ProxyInjector) Handle(ctx context.Context, request admission.Request) a
 		return admission.Allowed(fmt.Sprintf("'%s' annotation is '%s'", proxyInjectStatusAnnotation, injectedBroker))
 	}
 
-	cpuLimit := pod.Annotations[proxyCpuLimitAnnotation]
+	cpuLimit := pod.Annotations[proxyCPULimitAnnotation]
 	memoryLimit := pod.Annotations[proxyMemoryLimitAnnotation]
 
 	limits := corev1.ResourceList{}
@@ -127,7 +127,7 @@ func (i *ProxyInjector) Handle(ctx context.Context, request admission.Request) a
 
 	requests := corev1.ResourceList{}
 
-	cpuRequest := pod.Annotations[proxyCpuRequestAnnotation]
+	cpuRequest := pod.Annotations[proxyCPURequestAnnotation]
 	memoryRequest := pod.Annotations[proxyMemoryRequestAnnotation]
 
 	if cpuRequest != "" {
