@@ -67,8 +67,7 @@ type Reconciler struct {
 // Reconcile reads that state of the cluster for a Entity object and makes changes based on the state read
 // and what is in the Entity.Spec
 func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Infof("Reconciling Entity %s/%s", request.Namespace, request.Name)
-
+	log.Infof("Reconciling Entity request in namespace %s, %s", request.Name, request.Namespace)
 	// Fetch the Entity instance
 	entity := &v1beta1.Entity{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, entity)
@@ -79,6 +78,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
+		log.Warnf("Failed to reconcile entity %s in namespace %s, %s", request.Name, request.Namespace, err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
@@ -95,6 +95,7 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 		k8s.AddFinalizer(entity, topoFinalizer)
 		err := r.client.Update(context.TODO(), entity)
 		if err != nil {
+			log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
 	}
@@ -102,6 +103,7 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 	// Connect to the topology service
 	conn, err := grpc.ConnectService(r.client, entity.Namespace, topoService)
 	if err != nil {
+		log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 		return reconcile.Result{}, err
 	}
 	defer conn.Close()
@@ -113,6 +115,7 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 		return reconcile.Result{}, err
 	} else if object != nil {
 		if err := r.updateEntity(entity, object, client); err != nil {
+			log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, nil
@@ -120,6 +123,7 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 
 	// If the entity does not exist, create it
 	if err := r.createEntity(entity, client); err != nil {
+		log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
@@ -137,6 +141,7 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 	}
 	err := r.client.Get(context.TODO(), nsName, ns)
 	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 		return reconcile.Result{}, err
 	}
 
@@ -144,6 +149,7 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 		// Connect to the topology service
 		conn, err := grpc.ConnectService(r.client, entity.Namespace, topoService)
 		if err != nil {
+			log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
 		defer conn.Close()
@@ -152,6 +158,7 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 
 		// Delete the entity from the topology
 		if err := r.deleteEntity(entity, client); err != nil {
+			log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
 	}
@@ -159,6 +166,7 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 	// Once the entity has been deleted, remove the topology finalizer
 	k8s.RemoveFinalizer(entity, topoFinalizer)
 	if err := r.client.Update(context.TODO(), entity); err != nil {
+		log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
@@ -203,7 +211,6 @@ func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient
 		}
 	}
 	log.Infof("Creating entity %+v", object)
-
 	request := &topo.CreateRequest{
 		Object: object,
 	}
@@ -215,7 +222,7 @@ func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient
 
 	stat, ok := status.FromError(err)
 	if !ok {
-		log.Infof("Unable to create entity: %+v", object)
+		log.Warnf("Unable to create entity: %+v", object, err)
 		return err
 	}
 
