@@ -233,9 +233,7 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 				return reconcile.Result{}, err
 			}
 			defer conn.Close()
-
 			client := topo.NewTopoClient(conn)
-
 			// Delete the entity from the topology
 			if err := r.deleteEntity(ctx, entity, client); err != nil && !errors.IsNotFound(err) {
 				log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
