@@ -97,6 +97,7 @@ func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity
 	} else {
 		topoServiceName = topoService
 	}
+
 	// Add the finalizer to the entity if necessary
 	if !k8s.HasFinalizer(entity, topoFinalizer) {
 		k8s.AddFinalizer(entity, topoFinalizer)
@@ -146,7 +147,6 @@ func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity
 			return reconcile.Result{}, err
 		}
 		defer conn.Close()
-
 		client := topo.NewTopoClient(conn)
 		// Check if the entity exists in the topology and return it for update if so
 		if object, err := r.entityExists(ctx, entity, client); err != nil {
@@ -201,7 +201,7 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 		topoServiceName = topoService
 	}
 
-	if err == nil && ns.DeletionTimestamp == nil {
+	if err == nil && ns.DeletionTimestamp == nil && entity.Status.State != v1beta1.StateRemoved {
 		// Set entity state to StateRemoving
 		switch entity.Status.State {
 		case v1beta1.StateAdding, v1beta1.StateAdded:
