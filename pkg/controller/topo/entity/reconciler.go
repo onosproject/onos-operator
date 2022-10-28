@@ -83,6 +83,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
+	if entity.Status == nil {
+		entity.Status = &v1beta1.EntityStatus{State: v1beta1.StatePending}
+		err := r.client.Status().Update(context.TODO(), entity)
+		if err != nil {
+			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
 	if entity.DeletionTimestamp == nil {
 		return r.reconcileCreate(ctx, entity)
 	}
@@ -109,17 +119,8 @@ func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity
 	}
 
 	switch entity.Status.State {
-	// TODO: Need to upgrade k8s client version to set the default state to Pending via CRD schema and remove this case
-	case "":
-		entity.Status = v1beta1.EntityStatus{State: v1beta1.StatePending}
-		err := r.client.Status().Update(context.TODO(), entity)
-		if err != nil {
-			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
 	case v1beta1.StatePending:
-		entity.Status = v1beta1.EntityStatus{State: v1beta1.StateAdding}
+		entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateAdding}
 		err := r.client.Status().Update(context.TODO(), entity)
 		if err != nil {
 			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
@@ -132,7 +133,7 @@ func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity
 		topoServiceObject := &corev1.Service{}
 		if err := r.client.Get(context.TODO(), topoNamespacedName, topoServiceObject); err != nil && k8serrors.IsNotFound(err) {
 			// Set the state to StatePending if topo service is not found. Does it make sense????
-			entity.Status = v1beta1.EntityStatus{State: v1beta1.StatePending}
+			entity.Status = &v1beta1.EntityStatus{State: v1beta1.StatePending}
 			if err := r.client.Status().Update(context.TODO(), entity); err != nil {
 				log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
 				return reconcile.Result{}, err
@@ -163,7 +164,7 @@ func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity
 			log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
-		entity.Status = v1beta1.EntityStatus{State: v1beta1.StateAdded}
+		entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateAdded}
 		err = r.client.Status().Update(context.TODO(), entity)
 		if err != nil {
 			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
@@ -201,11 +202,11 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 		topoServiceName = topoService
 	}
 
-	if err == nil && ns.DeletionTimestamp == nil && entity.Status.State != v1beta1.StateRemoved {
+	if err == nil && ns.DeletionTimestamp == nil {
 		// Set entity state to StateRemoving
 		switch entity.Status.State {
 		case v1beta1.StateAdding, v1beta1.StateAdded:
-			entity.Status = v1beta1.EntityStatus{State: v1beta1.StateRemoving}
+			entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateRemoving}
 			err := r.client.Status().Update(context.TODO(), entity)
 			if err != nil {
 				log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
@@ -218,7 +219,7 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 			topoServiceObject := &corev1.Service{}
 			if err := r.client.Get(context.TODO(), objectKey, topoServiceObject); err != nil && k8serrors.IsNotFound(err) {
 				// Set the state to StateRemoved if topo service is not found.
-				entity.Status = v1beta1.EntityStatus{State: v1beta1.StateRemoved}
+				entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateRemoved}
 				if err := r.client.Status().Update(context.TODO(), entity); err != nil {
 					log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
 					return reconcile.Result{}, err
@@ -239,7 +240,7 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 				log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 				return reconcile.Result{}, err
 			}
-			entity.Status = v1beta1.EntityStatus{State: v1beta1.StateRemoved}
+			entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateRemoved}
 			err = r.client.Status().Update(context.TODO(), entity)
 			if err != nil {
 				log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)

@@ -46,8 +46,8 @@ type EntityStatus struct {
 type Entity struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              EntitySpec   `json:"spec,omitempty"`
-	Status            EntityStatus `json:"status"`
+	Spec              EntitySpec    `json:"spec,omitempty"`
+	Status            *EntityStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
