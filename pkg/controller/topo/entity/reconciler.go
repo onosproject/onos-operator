@@ -66,11 +66,11 @@ type Reconciler struct {
 
 // Reconcile reads that state of the cluster for a Entity object and makes changes based on the state read
 // and what is in the Entity.Spec
-func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log.Infof("Reconciling Entity request in namespace %s, %s", request.Name, request.Namespace)
 	// Fetch the Entity instance
 	entity := &v1beta1.Entity{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, entity)
+	err := r.client.Get(ctx, request.NamespacedName, entity)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -84,16 +84,16 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	}
 
 	if entity.DeletionTimestamp == nil {
-		return r.reconcileCreate(entity)
+		return r.reconcileCreate(ctx, entity)
 	}
-	return r.reconcileDelete(entity)
+	return r.reconcileDelete(ctx, entity)
 }
 
-func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, error) {
+func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity) (reconcile.Result, error) {
 	// Add the finalizer to the entity if necessary
 	if !k8s.HasFinalizer(entity, topoFinalizer) {
 		k8s.AddFinalizer(entity, topoFinalizer)
-		err := r.client.Update(context.TODO(), entity)
+		err := r.client.Update(ctx, entity)
 		if err != nil {
 			log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
@@ -111,10 +111,10 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 	client := topo.NewTopoClient(conn)
 
 	// Check if the entity exists in the topology and return it for update if so
-	if object, err := r.entityExists(entity, client); err != nil {
+	if object, err := r.entityExists(ctx, entity, client); err != nil {
 		return reconcile.Result{}, err
 	} else if object != nil {
-		if err := r.updateEntity(entity, object, client); err != nil {
+		if err := r.updateEntity(ctx, entity, object, client); err != nil {
 			log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
@@ -122,14 +122,14 @@ func (r *Reconciler) reconcileCreate(entity *v1beta1.Entity) (reconcile.Result, 
 	}
 
 	// If the entity does not exist, create it
-	if err := r.createEntity(entity, client); err != nil {
+	if err := r.createEntity(ctx, entity, client); err != nil {
 		log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
 }
 
-func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, error) {
+func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity) (reconcile.Result, error) {
 	// If the entity has already been finalized, exit reconciliation
 	if !k8s.HasFinalizer(entity, topoFinalizer) {
 		return reconcile.Result{}, nil
@@ -139,7 +139,7 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 	nsName := types.NamespacedName{
 		Name: entity.Namespace,
 	}
-	err := r.client.Get(context.TODO(), nsName, ns)
+	err := r.client.Get(ctx, nsName, ns)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 		return reconcile.Result{}, err
@@ -157,7 +157,7 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 		client := topo.NewTopoClient(conn)
 
 		// Delete the entity from the topology
-		if err := r.deleteEntity(entity, client); err != nil {
+		if err := r.deleteEntity(ctx, entity, client); err != nil {
 			log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
@@ -165,18 +165,18 @@ func (r *Reconciler) reconcileDelete(entity *v1beta1.Entity) (reconcile.Result, 
 
 	// Once the entity has been deleted, remove the topology finalizer
 	k8s.RemoveFinalizer(entity, topoFinalizer)
-	if err := r.client.Update(context.TODO(), entity); err != nil {
+	if err := r.client.Update(ctx, entity); err != nil {
 		log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
 }
 
-func (r *Reconciler) entityExists(entity *v1beta1.Entity, client topo.TopoClient) (*topo.Object, error) {
+func (r *Reconciler) entityExists(ctx context.Context, entity *v1beta1.Entity, client topo.TopoClient) (*topo.Object, error) {
 	request := &topo.GetRequest{
 		ID: topo.ID(entity.Spec.URI),
 	}
-	resp, err := client.Get(context.TODO(), request)
+	resp, err := client.Get(ctx, request)
 	if err == nil {
 		return resp.Object, nil
 	}
@@ -193,7 +193,7 @@ func (r *Reconciler) entityExists(entity *v1beta1.Entity, client topo.TopoClient
 	return nil, nil
 }
 
-func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient) error {
+func (r *Reconciler) createEntity(ctx context.Context, entity *v1beta1.Entity, client topo.TopoClient) error {
 	object := &topo.Object{
 		ID:   topo.ID(entity.Spec.URI),
 		Type: topo.Object_ENTITY,
@@ -214,7 +214,7 @@ func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient
 	request := &topo.CreateRequest{
 		Object: object,
 	}
-	_, err := client.Create(context.TODO(), request)
+	_, err := client.Create(ctx, request)
 	if err == nil {
 		log.Infof("Entity created: %+v", object)
 		return nil
@@ -234,7 +234,7 @@ func (r *Reconciler) createEntity(entity *v1beta1.Entity, client topo.TopoClient
 	return nil
 }
 
-func (r *Reconciler) updateEntity(entity *v1beta1.Entity, object *topo.Object, client topo.TopoClient) error {
+func (r *Reconciler) updateEntity(ctx context.Context, entity *v1beta1.Entity, object *topo.Object, client topo.TopoClient) error {
 	for key, value := range entity.Spec.Aspects {
 		err := object.SetAspectBytes(key, value.Raw)
 		if err != nil {
@@ -246,7 +246,7 @@ func (r *Reconciler) updateEntity(entity *v1beta1.Entity, object *topo.Object, c
 	request := &topo.UpdateRequest{
 		Object: object,
 	}
-	_, err := client.Update(context.TODO(), request)
+	_, err := client.Update(ctx, request)
 	if err == nil {
 		log.Infof("Entity updated: %+v", object)
 		return nil
@@ -266,13 +266,13 @@ func (r *Reconciler) updateEntity(entity *v1beta1.Entity, object *topo.Object, c
 	return nil
 }
 
-func (r *Reconciler) deleteEntity(entity *v1beta1.Entity, client topo.TopoClient) error {
+func (r *Reconciler) deleteEntity(ctx context.Context, entity *v1beta1.Entity, client topo.TopoClient) error {
 	request := &topo.DeleteRequest{
 		ID: topo.ID(entity.Spec.URI),
 	}
 	log.Infof("Deleting entity %s", request.ID)
 
-	_, err := client.Delete(context.TODO(), request)
+	_, err := client.Delete(ctx, request)
 	if err == nil {
 		log.Infof("Entity deleted: %s", request.ID)
 		return nil

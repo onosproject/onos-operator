@@ -19,6 +19,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"time"
 
 	scheme "github.com/onosproject/onos-operator/pkg/clientset/versioned/scheme"
@@ -71,7 +72,7 @@ func (c *kinds) Get(name string, options v1.GetOptions) (result *v1beta1.Kind, e
 		Resource("kinds").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -88,7 +89,7 @@ func (c *kinds) List(opts v1.ListOptions) (result *v1beta1.KindList, err error) 
 		Resource("kinds").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -105,7 +106,7 @@ func (c *kinds) Watch(opts v1.ListOptions) (watch.Interface, error) {
 		Resource("kinds").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(context.TODO())
 }
 
 // Create takes the representation of a kind and creates it.  Returns the server's representation of the kind, and an error, if there is any.
@@ -115,7 +116,7 @@ func (c *kinds) Create(kind *v1beta1.Kind) (result *v1beta1.Kind, err error) {
 		Namespace(c.ns).
 		Resource("kinds").
 		Body(kind).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -128,7 +129,7 @@ func (c *kinds) Update(kind *v1beta1.Kind) (result *v1beta1.Kind, err error) {
 		Resource("kinds").
 		Name(kind.Name).
 		Body(kind).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -144,7 +145,7 @@ func (c *kinds) UpdateStatus(kind *v1beta1.Kind) (result *v1beta1.Kind, err erro
 		Name(kind.Name).
 		SubResource("status").
 		Body(kind).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -156,7 +157,7 @@ func (c *kinds) Delete(name string, options *v1.DeleteOptions) error {
 		Resource("kinds").
 		Name(name).
 		Body(options).
-		Do().
+		Do(context.TODO()).
 		Error()
 }
 
@@ -172,7 +173,7 @@ func (c *kinds) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListO
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
 		Body(options).
-		Do().
+		Do(context.TODO()).
 		Error()
 }
 
@@ -185,7 +186,7 @@ func (c *kinds) Patch(name string, pt types.PatchType, data []byte, subresources
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }

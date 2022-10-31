@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -126,7 +127,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	webhook, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(service, metav1.GetOptions{})
+	webhook, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.Background(), service, metav1.GetOptions{})
 	if err != nil {
 		log.Panic(err)
 	}
@@ -136,7 +137,7 @@ func main() {
 		webhook.Webhooks[i] = wh
 	}
 
-	if _, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(webhook); err != nil {
+	if _, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(context.Background(), webhook, metav1.UpdateOptions{}); err != nil {
 		log.Panic(err)
 	}
 }
