@@ -19,6 +19,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"time"
 
 	scheme "github.com/onosproject/onos-operator/pkg/clientset/versioned/scheme"
@@ -71,7 +72,7 @@ func (c *models) Get(name string, options v1.GetOptions) (result *v1beta1.Model,
 		Resource("models").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -88,7 +89,7 @@ func (c *models) List(opts v1.ListOptions) (result *v1beta1.ModelList, err error
 		Resource("models").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -105,7 +106,7 @@ func (c *models) Watch(opts v1.ListOptions) (watch.Interface, error) {
 		Resource("models").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(context.TODO())
 }
 
 // Create takes the representation of a model and creates it.  Returns the server's representation of the model, and an error, if there is any.
@@ -115,7 +116,7 @@ func (c *models) Create(model *v1beta1.Model) (result *v1beta1.Model, err error)
 		Namespace(c.ns).
 		Resource("models").
 		Body(model).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -128,7 +129,7 @@ func (c *models) Update(model *v1beta1.Model) (result *v1beta1.Model, err error)
 		Resource("models").
 		Name(model.Name).
 		Body(model).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -144,7 +145,7 @@ func (c *models) UpdateStatus(model *v1beta1.Model) (result *v1beta1.Model, err 
 		Name(model.Name).
 		SubResource("status").
 		Body(model).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -156,7 +157,7 @@ func (c *models) Delete(name string, options *v1.DeleteOptions) error {
 		Resource("models").
 		Name(name).
 		Body(options).
-		Do().
+		Do(context.TODO()).
 		Error()
 }
 
@@ -172,7 +173,7 @@ func (c *models) DeleteCollection(options *v1.DeleteOptions, listOptions v1.List
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
 		Body(options).
-		Do().
+		Do(context.TODO()).
 		Error()
 }
 
@@ -185,7 +186,7 @@ func (c *models) Patch(name string, pt types.PatchType, data []byte, subresource
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }

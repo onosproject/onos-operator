@@ -19,6 +19,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"time"
 
 	scheme "github.com/onosproject/onos-operator/pkg/clientset/versioned/scheme"
@@ -71,7 +72,7 @@ func (c *entities) Get(name string, options v1.GetOptions) (result *v1beta1.Enti
 		Resource("entities").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -88,7 +89,7 @@ func (c *entities) List(opts v1.ListOptions) (result *v1beta1.EntityList, err er
 		Resource("entities").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -105,7 +106,7 @@ func (c *entities) Watch(opts v1.ListOptions) (watch.Interface, error) {
 		Resource("entities").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(context.TODO())
 }
 
 // Create takes the representation of a entity and creates it.  Returns the server's representation of the entity, and an error, if there is any.
@@ -115,7 +116,7 @@ func (c *entities) Create(entity *v1beta1.Entity) (result *v1beta1.Entity, err e
 		Namespace(c.ns).
 		Resource("entities").
 		Body(entity).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -128,7 +129,7 @@ func (c *entities) Update(entity *v1beta1.Entity) (result *v1beta1.Entity, err e
 		Resource("entities").
 		Name(entity.Name).
 		Body(entity).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -144,7 +145,7 @@ func (c *entities) UpdateStatus(entity *v1beta1.Entity) (result *v1beta1.Entity,
 		Name(entity.Name).
 		SubResource("status").
 		Body(entity).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }
@@ -156,7 +157,7 @@ func (c *entities) Delete(name string, options *v1.DeleteOptions) error {
 		Resource("entities").
 		Name(name).
 		Body(options).
-		Do().
+		Do(context.TODO()).
 		Error()
 }
 
@@ -172,7 +173,7 @@ func (c *entities) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
 		Body(options).
-		Do().
+		Do(context.TODO()).
 		Error()
 }
 
@@ -185,7 +186,7 @@ func (c *entities) Patch(name string, pt types.PatchType, data []byte, subresour
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	return
 }

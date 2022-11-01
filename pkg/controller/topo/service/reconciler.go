@@ -65,12 +65,12 @@ type Reconciler struct {
 
 // Reconcile reads that state of the cluster for a Service object and makes changes based on the state read
 // and what is in the Service.Spec
-func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log.Infof("Reconciling Service %s.%s", request.Namespace, request.Name)
 
 	// Fetch the Service instance
 	service := &v1beta1.Service{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, service)
+	err := r.client.Get(ctx, request.NamespacedName, service)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

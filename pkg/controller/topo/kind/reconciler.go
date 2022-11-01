@@ -66,12 +66,12 @@ type Reconciler struct {
 
 // Reconcile reads that state of the cluster for a Kind object and makes changes based on the state read
 // and what is in the Kind.Spec
-func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log.Infof("Reconciling Kind %s/%s", request.Namespace, request.Name)
 
 	// Fetch the Kind instance
 	kind := &v1beta1.Kind{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, kind)
+	err := r.client.Get(ctx, request.NamespacedName, kind)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -84,16 +84,16 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	}
 
 	if kind.DeletionTimestamp == nil {
-		return r.reconcileCreate(kind)
+		return r.reconcileCreate(ctx, kind)
 	}
-	return r.reconcileDelete(kind)
+	return r.reconcileDelete(ctx, kind)
 }
 
-func (r *Reconciler) reconcileCreate(kind *v1beta1.Kind) (reconcile.Result, error) {
+func (r *Reconciler) reconcileCreate(ctx context.Context, kind *v1beta1.Kind) (reconcile.Result, error) {
 	// Add the finalizer to the kind if necessary
 	if !k8s.HasFinalizer(kind, topoFinalizer) {
 		k8s.AddFinalizer(kind, topoFinalizer)
-		err := r.client.Update(context.TODO(), kind)
+		err := r.client.Update(ctx, kind)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -109,23 +109,23 @@ func (r *Reconciler) reconcileCreate(kind *v1beta1.Kind) (reconcile.Result, erro
 	client := topo.NewTopoClient(conn)
 
 	// Check if the kind exists in the topology and return it for update if so
-	if object, err := r.kindExists(kind, client); err != nil {
+	if object, err := r.kindExists(ctx, kind, client); err != nil {
 		return reconcile.Result{}, err
 	} else if object != nil {
-		if err := r.updateKind(kind, object, client); err != nil {
+		if err := r.updateKind(ctx, kind, object, client); err != nil {
 			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, nil
 	}
 
 	// If the kind does not exist, create it
-	if err := r.createKind(kind, client); err != nil {
+	if err := r.createKind(ctx, kind, client); err != nil {
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
 }
 
-func (r *Reconciler) reconcileDelete(kind *v1beta1.Kind) (reconcile.Result, error) {
+func (r *Reconciler) reconcileDelete(ctx context.Context, kind *v1beta1.Kind) (reconcile.Result, error) {
 	// If the kind has already been finalized, exit reconciliation
 	if !k8s.HasFinalizer(kind, topoFinalizer) {
 		return reconcile.Result{}, nil
@@ -135,7 +135,7 @@ func (r *Reconciler) reconcileDelete(kind *v1beta1.Kind) (reconcile.Result, erro
 	nsName := types.NamespacedName{
 		Name: kind.Namespace,
 	}
-	err := r.client.Get(context.TODO(), nsName, ns)
+	err := r.client.Get(ctx, nsName, ns)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
@@ -151,7 +151,7 @@ func (r *Reconciler) reconcileDelete(kind *v1beta1.Kind) (reconcile.Result, erro
 		client := topo.NewTopoClient(conn)
 
 		// Delete the kind from the topology
-		if err := r.deleteKind(kind, client); err != nil {
+		if err := r.deleteKind(ctx, kind, client); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -164,11 +164,11 @@ func (r *Reconciler) reconcileDelete(kind *v1beta1.Kind) (reconcile.Result, erro
 	return reconcile.Result{}, nil
 }
 
-func (r *Reconciler) kindExists(kind *v1beta1.Kind, client topo.TopoClient) (*topo.Object, error) {
+func (r *Reconciler) kindExists(ctx context.Context, kind *v1beta1.Kind, client topo.TopoClient) (*topo.Object, error) {
 	request := &topo.GetRequest{
 		ID: topo.ID(kind.Name),
 	}
-	resp, err := client.Get(context.TODO(), request)
+	resp, err := client.Get(ctx, request)
 	if err == nil {
 		return resp.Object, nil
 	}
@@ -185,7 +185,7 @@ func (r *Reconciler) kindExists(kind *v1beta1.Kind, client topo.TopoClient) (*to
 	return nil, nil
 }
 
-func (r *Reconciler) createKind(kind *v1beta1.Kind, client topo.TopoClient) error {
+func (r *Reconciler) createKind(ctx context.Context, kind *v1beta1.Kind, client topo.TopoClient) error {
 	object := &topo.Object{
 		ID:   topo.ID(kind.Name),
 		Type: topo.Object_KIND,
@@ -207,7 +207,7 @@ func (r *Reconciler) createKind(kind *v1beta1.Kind, client topo.TopoClient) erro
 	request := &topo.CreateRequest{
 		Object: object,
 	}
-	_, err := client.Create(context.TODO(), request)
+	_, err := client.Create(ctx, request)
 	if err == nil {
 		log.Infof("Kind created: %+v", object)
 		return nil
@@ -227,7 +227,7 @@ func (r *Reconciler) createKind(kind *v1beta1.Kind, client topo.TopoClient) erro
 	return nil
 }
 
-func (r *Reconciler) updateKind(kind *v1beta1.Kind, object *topo.Object, client topo.TopoClient) error {
+func (r *Reconciler) updateKind(ctx context.Context, kind *v1beta1.Kind, object *topo.Object, client topo.TopoClient) error {
 	for key, value := range kind.Spec.Aspects {
 		err := object.SetAspectBytes(key, value.Raw)
 		if err != nil {
@@ -239,7 +239,7 @@ func (r *Reconciler) updateKind(kind *v1beta1.Kind, object *topo.Object, client 
 	request := &topo.UpdateRequest{
 		Object: object,
 	}
-	_, err := client.Update(context.TODO(), request)
+	_, err := client.Update(ctx, request)
 	if err == nil {
 		log.Infof("Kind updated: %+v", object)
 		return nil
@@ -259,13 +259,13 @@ func (r *Reconciler) updateKind(kind *v1beta1.Kind, object *topo.Object, client 
 	return nil
 }
 
-func (r *Reconciler) deleteKind(kind *v1beta1.Kind, client topo.TopoClient) error {
+func (r *Reconciler) deleteKind(ctx context.Context, kind *v1beta1.Kind, client topo.TopoClient) error {
 	request := &topo.DeleteRequest{
 		ID: topo.ID(kind.Name),
 	}
 	log.Infof("Deleting kind %s", request.ID)
 
-	_, err := client.Delete(context.TODO(), request)
+	_, err := client.Delete(ctx, request)
 	if err == nil {
 		log.Infof("Kind deleted: %s", request.ID)
 		return nil

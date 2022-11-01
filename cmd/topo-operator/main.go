@@ -78,7 +78,7 @@ func main() {
 	}
 
 	// Add controllers to the manager
-	if err := topoctrl.AddControllers(mgr); err != nil {
+	if err := topoctrl.AddControllers(context.Background(), mgr); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
