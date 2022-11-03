@@ -29,7 +29,7 @@ import (
 
 var log = logging.GetLogger("controller", "topo", "entity")
 
-const topoFinalizer = "topo"
+const topoFinalizer = "topo.onosproject.org/entity"
 
 // Add creates a new Entity controller and adds it to the Manager. The Manager will set fields on the
 // controller and Start it when the Manager is Started.
@@ -82,16 +82,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	if entity.Status == nil {
-		entity.Status = &v1beta1.EntityStatus{State: v1beta1.StatePending}
-		err := r.client.Status().Update(context.TODO(), entity)
-		if err != nil {
-			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
-	}
-
 	if entity.DeletionTimestamp == nil {
 		return r.reconcileCreate(ctx, entity)
 	}
@@ -114,7 +104,7 @@ func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity
 
 	switch entity.Status.State {
 	case v1beta1.StatePending:
-		entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateAdding}
+		entity.Status = v1beta1.EntityStatus{State: v1beta1.StateAdding}
 		err := r.client.Status().Update(context.TODO(), entity)
 		if err != nil {
 			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
@@ -126,8 +116,8 @@ func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity
 		topoNamespacedName := types.NamespacedName{Namespace: entity.Namespace, Name: topoServiceName}
 		topoServiceObject := &corev1.Service{}
 		if err := r.client.Get(context.TODO(), topoNamespacedName, topoServiceObject); err != nil && k8serrors.IsNotFound(err) {
-			// Set the state to StatePending if topo service is not found. Does it make sense????
-			entity.Status = &v1beta1.EntityStatus{State: v1beta1.StatePending}
+			// Set the state to StatePending if topo service is not found (deleted).
+			entity.Status = v1beta1.EntityStatus{State: v1beta1.StatePending}
 			if err := r.client.Status().Update(context.TODO(), entity); err != nil {
 				log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
 				return reconcile.Result{}, err
@@ -158,7 +148,7 @@ func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity
 			log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
-		entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateAdded}
+		entity.Status = v1beta1.EntityStatus{State: v1beta1.StateAdded}
 		err = r.client.Status().Update(context.TODO(), entity)
 		if err != nil {
 			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
@@ -192,10 +182,9 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 	topoServiceName := entity.Spec.ServiceName
 
 	if err == nil && ns.DeletionTimestamp == nil {
-		// Set entity state to StateRemoving
 		switch entity.Status.State {
 		case v1beta1.StateAdding, v1beta1.StateAdded:
-			entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateRemoving}
+			entity.Status = v1beta1.EntityStatus{State: v1beta1.StateRemoving}
 			err := r.client.Status().Update(context.TODO(), entity)
 			if err != nil {
 				log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
@@ -207,8 +196,8 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 			objectKey := types.NamespacedName{Namespace: entity.Namespace, Name: topoServiceName}
 			topoServiceObject := &corev1.Service{}
 			if err := r.client.Get(context.TODO(), objectKey, topoServiceObject); err != nil && k8serrors.IsNotFound(err) {
-				// Set the state to StateRemoved if topo service is not found.
-				entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateRemoved}
+				// Set the state to StateRemoved if topo service is not found (deleted).
+				entity.Status = v1beta1.EntityStatus{State: v1beta1.StateRemoved}
 				if err := r.client.Status().Update(context.TODO(), entity); err != nil {
 					log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
 					return reconcile.Result{}, err
@@ -229,7 +218,7 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 				log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 				return reconcile.Result{}, err
 			}
-			entity.Status = &v1beta1.EntityStatus{State: v1beta1.StateRemoved}
+			entity.Status = v1beta1.EntityStatus{State: v1beta1.StateRemoved}
 			err = r.client.Status().Update(context.TODO(), entity)
 			if err != nil {
 				log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
@@ -247,14 +236,6 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 		}
 	}
 
-	// Once the entity has been deleted, remove the topology finalizer
-	if entity.Status.State == v1beta1.StatePending || entity.Status.State == v1beta1.StateRemoved {
-		k8s.RemoveFinalizer(entity, topoFinalizer)
-		if err := r.client.Update(context.TODO(), entity); err != nil {
-			log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
-			return reconcile.Result{}, err
-		}
-	}
 	return reconcile.Result{}, nil
 }
 
