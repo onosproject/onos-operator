@@ -63,8 +63,14 @@ spec:
           spec:
             type: object
             required:
-            - kind
+              - uri
+              - kind
             properties:
+              serviceName:
+                type: string
+                default: onos-topo
+              uri:
+                type: string
               kind:
                 type: object
                 required:

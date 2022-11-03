@@ -29,7 +29,6 @@ import (
 
 var log = logging.GetLogger("controller", "topo", "entity")
 
-const topoService = "onos-topo"
 const topoFinalizer = "topo"
 
 // Add creates a new Entity controller and adds it to the Manager. The Manager will set fields on the
@@ -101,12 +100,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity) (reconcile.Result, error) {
 	// Get topo service name
-	var topoServiceName string
-	if entity.Spec.ServiceName != "" {
-		topoServiceName = entity.Spec.ServiceName
-	} else {
-		topoServiceName = topoService
-	}
+	topoServiceName := entity.Spec.ServiceName
 
 	// Add the finalizer to the entity if necessary
 	if !k8s.HasFinalizer(entity, topoFinalizer) {
@@ -195,12 +189,7 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 	}
 
 	// Get topo service name
-	var topoServiceName string
-	if entity.Spec.ServiceName != "" {
-		topoServiceName = entity.Spec.ServiceName
-	} else {
-		topoServiceName = topoService
-	}
+	topoServiceName := entity.Spec.ServiceName
 
 	if err == nil && ns.DeletionTimestamp == nil {
 		// Set entity state to StateRemoving
