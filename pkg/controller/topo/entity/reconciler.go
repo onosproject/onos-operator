@@ -29,8 +29,7 @@ import (
 
 var log = logging.GetLogger("controller", "topo", "entity")
 
-const topoService = "onos-topo"
-const topoFinalizer = "topo"
+const topoFinalizer = "topo.onosproject.org/entity"
 
 // Add creates a new Entity controller and adds it to the Manager. The Manager will set fields on the
 // controller and Start it when the Manager is Started.
@@ -49,6 +48,29 @@ func Add(mgr manager.Manager) error {
 
 	// Watch for changes to primary resource Entity
 	err = c.Watch(&source.Kind{Type: &v1beta1.Entity{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
+		topoEntityList := &v1beta1.EntityList{}
+		if err := mgr.GetClient().List(context.Background(), topoEntityList, &client.ListOptions{Namespace: object.GetNamespace()}); err != nil {
+			log.Error(err)
+			return nil
+		}
+		var requests []reconcile.Request
+		for _, entity := range topoEntityList.Items {
+			if object.GetName() == entity.Spec.ServiceName {
+				requests = append(requests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: entity.Namespace,
+						Name:      entity.Name,
+					},
+				})
+			}
+		}
+		return requests
+	}))
 	if err != nil {
 		return err
 	}
@@ -90,41 +112,74 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileCreate(ctx context.Context, entity *v1beta1.Entity) (reconcile.Result, error) {
-	// Add the finalizer to the entity if necessary
-	if !k8s.HasFinalizer(entity, topoFinalizer) {
-		k8s.AddFinalizer(entity, topoFinalizer)
-		err := r.client.Update(ctx, entity)
+	// Get topo service name
+	topoServiceName := entity.Spec.ServiceName
+
+	// Check if topo service is available
+	topoNamespacedName := types.NamespacedName{Namespace: entity.Namespace, Name: topoServiceName}
+	topoServiceObject := &corev1.Service{}
+	if err := r.client.Get(ctx, topoNamespacedName, topoServiceObject); err != nil && k8serrors.IsNotFound(err) {
+		// Set the state to StatePending if topo service is not found (deleted).
+		entity.Status = v1beta1.EntityStatus{State: v1beta1.StatePending}
+		if err := r.client.Status().Update(ctx, entity); err != nil {
+			log.Warnf("Failed to update state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
+			return reconcile.Result{}, err
+		}
+		log.Warnf("Failed to find topo service %s in namespace %s, %s", topoServiceName, entity.Namespace, err)
+		return reconcile.Result{}, err
+	}
+
+	switch entity.Status.State {
+	case v1beta1.StatePending:
+		entity.Status = v1beta1.EntityStatus{State: v1beta1.StateAdding}
+		err := r.client.Status().Update(ctx, entity)
+		if err != nil {
+			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	case v1beta1.StateAdding:
+		// Add the finalizer to the entity if necessary
+		if !k8s.HasFinalizer(entity, topoFinalizer) {
+			k8s.AddFinalizer(entity, topoFinalizer)
+			err := r.client.Update(ctx, entity)
+			if err != nil {
+				log.Warnf("Failed to reconcile adding finalizer to entity %s, %s, %s", entity.Name, entity.Namespace, err)
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, nil
+		}
+		// Connect to the topology service
+		conn, err := grpc.ConnectService(r.client, entity.Namespace, topoServiceName)
 		if err != nil {
 			log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
-	}
-
-	// Connect to the topology service
-	conn, err := grpc.ConnectService(r.client, entity.Namespace, topoService)
-	if err != nil {
-		log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
-		return reconcile.Result{}, err
-	}
-	defer conn.Close()
-
-	client := topo.NewTopoClient(conn)
-
-	// Check if the entity exists in the topology and return it for update if so
-	if object, err := r.entityExists(ctx, entity, client); err != nil {
-		return reconcile.Result{}, err
-	} else if object != nil {
-		if err := r.updateEntity(ctx, entity, object, client); err != nil {
+		defer conn.Close()
+		client := topo.NewTopoClient(conn)
+		// Check if the entity exists in the topology and return it for update if so
+		if object, err := r.entityExists(ctx, entity, client); err != nil {
+			return reconcile.Result{}, err
+		} else if object != nil {
+			if err := r.updateEntity(ctx, entity, object, client); err != nil && !errors.IsNotFound(err) && !errors.IsConflict(err) {
+				log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
+				return reconcile.Result{}, err
+			}
+		}
+		if err := r.createEntity(ctx, entity, client); err != nil && !errors.IsAlreadyExists(err) {
 			log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
+		entity.Status = v1beta1.EntityStatus{State: v1beta1.StateAdded}
+		err = r.client.Status().Update(ctx, entity)
+		if err != nil {
+			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
+			return reconcile.Result{}, err
+		}
 		return reconcile.Result{}, nil
-	}
-
-	// If the entity does not exist, create it
-	if err := r.createEntity(ctx, entity, client); err != nil {
-		log.Warnf("Failed to reconcile creating entity %s, %s, %s", entity.Name, entity.Namespace, err)
-		return reconcile.Result{}, err
+	case v1beta1.StateAdded:
+		log.Debugf("Entity %s is already added to topo store.", entity.Name)
+		return reconcile.Result{}, nil
 	}
 	return reconcile.Result{}, nil
 }
@@ -135,40 +190,63 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, entity *v1beta1.Entity
 		return reconcile.Result{}, nil
 	}
 
-	ns := &corev1.Namespace{}
-	nsName := types.NamespacedName{
-		Name: entity.Namespace,
-	}
-	err := r.client.Get(ctx, nsName, ns)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
+	// Get topo service name
+	topoServiceName := entity.Spec.ServiceName
+
+	// Check if topo service is available
+	objectKey := types.NamespacedName{Namespace: entity.Namespace, Name: topoServiceName}
+	topoServiceObject := &corev1.Service{}
+	if err := r.client.Get(ctx, objectKey, topoServiceObject); err != nil && k8serrors.IsNotFound(err) {
+		// Remove the finalizer if topo service is not found (deleted).
+		k8s.RemoveFinalizer(entity, topoFinalizer)
+		if err := r.client.Update(ctx, entity); err != nil {
+			log.Warnf("Failed to reconcile updating entity %s, %s, %s", entity.Name, entity.Namespace, err)
+			return reconcile.Result{}, err
+		}
+		log.Warnf("Failed to find topo service %s in namespace %s, %s; removed entities' finalizer", topoServiceName, entity.Namespace, err)
 		return reconcile.Result{}, err
 	}
 
-	if err == nil && ns.DeletionTimestamp == nil {
+	switch entity.Status.State {
+	case v1beta1.StateAdding, v1beta1.StateAdded:
+		entity.Status = v1beta1.EntityStatus{State: v1beta1.StateRemoving}
+		err := r.client.Status().Update(ctx, entity)
+		if err != nil {
+			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	case v1beta1.StateRemoving:
 		// Connect to the topology service
-		conn, err := grpc.ConnectService(r.client, entity.Namespace, topoService)
+		conn, err := grpc.ConnectService(r.client, entity.Namespace, topoServiceName)
 		if err != nil {
 			log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
 		defer conn.Close()
-
 		client := topo.NewTopoClient(conn)
-
 		// Delete the entity from the topology
-		if err := r.deleteEntity(ctx, entity, client); err != nil {
+		if err := r.deleteEntity(ctx, entity, client); err != nil && !errors.IsNotFound(err) {
 			log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
 			return reconcile.Result{}, err
 		}
+		entity.Status = v1beta1.EntityStatus{State: v1beta1.StateRemoved}
+		err = r.client.Status().Update(ctx, entity)
+		if err != nil {
+			log.Warnf("Failed to reconcile updating state of entity %s, %s, %s", entity.Name, entity.Namespace, err)
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	case v1beta1.StateRemoved:
+		log.Debugf("Entity %s is already removed or never been added to the topo store.", entity.Name)
+		k8s.RemoveFinalizer(entity, topoFinalizer)
+		if err := r.client.Update(ctx, entity); err != nil {
+			log.Warnf("Failed to reconcile removing finalizer of entity %s, %s, %s", entity.Name, entity.Namespace, err)
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
 	}
 
-	// Once the entity has been deleted, remove the topology finalizer
-	k8s.RemoveFinalizer(entity, topoFinalizer)
-	if err := r.client.Update(ctx, entity); err != nil {
-		log.Warnf("Failed to reconcile deleting entity %s, %s, %s", entity.Name, entity.Namespace, err)
-		return reconcile.Result{}, err
-	}
 	return reconcile.Result{}, nil
 }
 

@@ -63,8 +63,14 @@ spec:
           spec:
             type: object
             required:
-            - kind
+              - uri
+              - kind
             properties:
+              serviceName:
+                type: string
+                default: onos-topo
+              uri:
+                type: string
               kind:
                 type: object
                 required:
@@ -79,6 +85,22 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
           status:
             type: object
+            default: {}
+            properties:
+              state:
+                type: string
+                default: Pending
+                enum:
+                  - Pending
+                  - Adding
+                  - Added
+                  - Removing
+                  - Removed
+    additionalPrinterColumns:
+      - name: State
+        type: string
+        description: The entity state
+        jsonPath: .status.state
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -251,7 +273,7 @@ spec:
       serviceAccountName: onos-operator
       containers:
       - name: controller
-        image: onosproject/topo-operator:v0.5.2
+        image: onosproject/topo-operator:v0.5.3
         ports:
         - containerPort: 60000
           name: metrics
@@ -298,7 +320,7 @@ spec:
       serviceAccountName: onos-operator
       initContainers:
         - name: init-certs
-          image: onosproject/config-operator-init:v0.5.2
+          image: onosproject/config-operator-init:v0.5.3
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -323,7 +345,7 @@ spec:
               mountPath: /etc/webhook/certs
       containers:
         - name: controller
-          image: onosproject/app-operator:v0.5.2
+          image: onosproject/app-operator:v0.5.3
           ports:
             - containerPort: 60000
               name: metrics
