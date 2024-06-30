@@ -8,6 +8,6 @@ RUN apk upgrade --update --no-cache
 
 USER nobody
 
-ADD build/admission-init/_output/bin/admission-init /usr/local/bin/admission-init
+ADD build/_output/admission-init /usr/local/bin/admission-init
 
 ENTRYPOINT ["admission-init"]

@@ -80,7 +80,7 @@ func (i *ProxyInjector) InjectDecoder(decoder *admission.Decoder) error {
 }
 
 // Handle :
-func (i *ProxyInjector) Handle(ctx context.Context, request admission.Request) admission.Response {
+func (i *ProxyInjector) Handle(_ context.Context, request admission.Request) admission.Response {
 	podNamespacedName := types.NamespacedName{
 		Namespace: request.Namespace,
 		Name:      request.Name,
