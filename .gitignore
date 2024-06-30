@@ -30,3 +30,4 @@ _output
 *-output.out
 
 build/build-tools
+venv
