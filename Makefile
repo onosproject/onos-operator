@@ -8,6 +8,12 @@ export GO111MODULE=on
 .PHONY: build
 
 ONOS_OPERATOR_VERSION ?= latest
+DOCKER_TAG        ?= ${ONOS_OPERATOR_VERSION}
+DOCKER_REPOSITORY ?= onosproject/
+DOCKER_REGISTRY   ?= ""
+DOCKER_CONFIG_OPERATOR_INIT_IMAGENAME := ${DOCKER_REGISTRY}${DOCKER_REPOSITORY}config-operator-init:${DOCKER_TAG}
+DOCKER_TOPO_OPERATOR_IMAGENAME        := ${DOCKER_REGISTRY}${DOCKER_REPOSITORY}topo-operator:${DOCKER_TAG}
+DOCKER_APP_OPERATOR_IMAGENAME         := ${DOCKER_REGISTRY}${DOCKER_REPOSITORY}app-operator:${DOCKER_TAG}
 KIND_CLUSTER_NAME ?= kind
 
 GOLANG_CI_VERSION := v1.52.2
@@ -25,25 +31,25 @@ test: build lint license
 	go test github.com/onosproject/onos-operator/cmd/...
 
 docker-build-admission-init: # @HELP build admission-init Docker image
-	docker build . -f build/admission-init/Dockerfile -t onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
+	docker build . -f build/admission-init/Dockerfile -t ${DOCKER_CONFIG_OPERATOR_INIT_IMAGENAME}
 
 docker-build-topo-operator: # @HELP build topo-operator Docker image
-	docker build . -f build/topo-operator/Dockerfile -t onosproject/topo-operator:${ONOS_OPERATOR_VERSION}
+	docker build . -f build/topo-operator/Dockerfile -t ${DOCKER_TOPO_OPERATOR_IMAGENAME}
 
 docker-build-app-operator: # @HELP build app-operator Docker image
-	docker build . -f build/app-operator/Dockerfile -t onosproject/app-operator:${ONOS_OPERATOR_VERSION}
+	docker build . -f build/app-operator/Dockerfile -t ${DOCKER_APP_OPERATOR_IMAGENAME}
 
 docker-build: # @HELP build all Docker images
 docker-build: build docker-build-admission-init docker-build-topo-operator docker-build-app-operator
 
 docker-push-admission-init: # @HELP push admission-init Docker image
-	docker push onosproject/config-operator-init:${ONOS_OPERATOR_VERSION}
+	docker push ${DOCKER_CONFIG_OPERATOR_INIT_IMAGENAME}
 
 docker-push-topo-operator: # @HELP push topo-operator Docker image
-	docker push onosproject/topo-operator:${ONOS_OPERATOR_VERSION}
+	docker push ${DOCKER_TOPO_OPERATOR_IMAGENAME}
 
 docker-push-app-operator: # @HELP push app-operator Docker image
-	docker push onosproject/app-operator:${ONOS_OPERATOR_VERSION}
+	docker push ${DOCKER_APP_OPERATOR_IMAGENAME}
 
 
 docker-push: # @HELP push docker images
